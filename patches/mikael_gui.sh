@@ -4038,8 +4038,10 @@ p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/profiles/VersionList
 if p.exists():
     lines=p.read_text().splitlines()
     for i,line in enumerate(lines):
-        if "item.id.matches(" in line:
-            lines[i]='                item -> item != null && "release".equals(item.type) && item.id != null && item.id.matches("[0-9]+[.][0-9]+([.][0-9]+)?"));'
+        if "List<JMinecraftVersionList.Version> releaseList" in line:
+            lines[i]='        List<JMinecraftVersionList.Version> releaseList = new FilteredSubList<>(versionList, item -> item != null && "release".equals(item.type) && item.id != null && item.id.matches("[0-9]+[.][0-9]+([.][0-9]+)?"));'
+            if i + 1 < len(lines) and "item ->" in lines[i + 1]:
+                lines.pop(i + 1)
             break
     p.write_text("\n".join(lines)+"\n")
 PY
