@@ -4,6 +4,41 @@ ROOT=app_pojavlauncher/src/main
 RES=$ROOT/res
 JAVA=$ROOT/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java
 mkdir -p "$RES/drawable"
+# Keep the APK lightweight: Java runtimes are NOT bundled anymore.
+# The user downloads only the Java versions they need from Ajustes > Java > Runtimes.
+rm -rf "app_pojavlauncher/src/main/assets/components/jre-new" \
+       "app_pojavlauncher/src/main/assets/components/jre-21" \
+       "app_pojavlauncher/src/main/assets/components/jre-25"
+
+# Never auto-select/download an internal bundled JRE. Only runtimes explicitly
+# installed by the user (External-8/17/21/25) are considered.
+python3 - <<'PY'
+from pathlib import Path
+p = Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/NewJREUtil.java")
+x = p.read_text()
+old = '''    private static MathUtils.RankedValue<InternalRuntime> getNearestInternalRuntime(int targetVersion) {
+        List<InternalRuntime> runtimeList = Arrays.asList(InternalRuntime.values());
+        return MathUtils.findNearestPositive(targetVersion, runtimeList, (runtime)->runtime.majorVersion);
+    }'''
+new = '''    private static MathUtils.RankedValue<InternalRuntime> getNearestInternalRuntime(int targetVersion) {
+        // Mikael Launcher does not bundle Java runtimes. The user chooses
+        // which external runtime to download from the Java settings screen.
+        return null;
+    }'''
+if old not in x:
+    raise SystemExit("NewJREUtil internal-runtime selector block not found")
+p.write_text(x.replace(old, new))
+PY
+
+# Make the runtime screen explicit about on-demand downloads.
+python3 - <<'PY'
+from pathlib import Path
+p = Path("app_pojavlauncher/src/main/res/xml/pref_java.xml")
+x = p.read_text()
+x = x.replace('android:summary="@string/multirt_subtitle"', 'android:summary="Baixe somente as versões Java que você precisar. Nenhuma runtime vem dentro do APK."')
+x = x.replace('android:title="@string/multirt_title"', 'android:title="RUNTIMES JAVA"')
+p.write_text(x)
+PY
 # Remove upstream Amethyst/Pojav visual assets so Mikael Launcher uses only Mikael branding.
 # Keep resource references while replacing the upstream visual with a neutral Mikael resource.
 rm -f "$RES/drawable/ic_setting_sign_in_background.webp"
