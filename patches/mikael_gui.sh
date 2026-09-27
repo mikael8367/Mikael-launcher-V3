@@ -593,3 +593,248 @@ public class MikaelForgeOptiFineFragment extends Fragment {
  }
 }
 EOF
+
+
+# Mikael customization: launcher accent colors + selectable looping video background.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/res/xml/pref_main.xml")
+s=p.read_text()
+if "mikael_accent_color" not in s:
+    extra = r'''
+    <PreferenceCategory android:title="MIKAEL PERSONALIZAÇÃO">
+        <ListPreference
+            android:key="mikael_accent_color"
+            android:title="Cor do launcher"
+            android:summary="Escolha a cor dos botões e destaques"
+            android:entries="@array/mikael_color_names"
+            android:entryValues="@array/mikael_color_values"
+            android:defaultValue="#4ADE80" />
+        <Preference
+            android:key="mikael_video_background"
+            android:title="Vídeo de fundo"
+            android:summary="Escolha um vídeo do aparelho para usar como fundo animado" />
+        <SwitchPreferenceCompat
+            android:key="mikael_video_enabled"
+            android:title="Ativar vídeo de fundo"
+            android:summary="Reproduz o vídeo em loop na tela inicial"
+            android:defaultValue="false" />
+    </PreferenceCategory>
+'''
+    s=s.replace('</PreferenceScreen>', extra+'\n</PreferenceScreen>')
+    p.write_text(s)
+
+p=Path("app_pojavlauncher/src/main/res/values/arrays.xml")
+s=p.read_text() if p.exists() else '<resources/>'
+if "mikael_color_names" not in s:
+    s=s.replace('</resources>', '''    <string-array name="mikael_color_names">
+        <item>Verde Mikael</item><item>Azul</item><item>Roxo</item><item>Vermelho</item><item>Laranja</item><item>Ciano</item><item>Rosa</item><item>Amarelo</item>
+    </string-array>
+    <string-array name="mikael_color_values">
+        <item>#4ADE80</item><item>#60A5FA</item><item>#A78BFA</item><item>#F87171</item><item>#FB923C</item><item>#22D3EE</item><item>#F472B6</item><item>#FACC15</item>
+    </string-array>
+</resources>''')
+    p.write_text(s)
+PY
+
+# Patch settings to pick and persist a video URI.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/prefs/screens/LauncherPreferenceFragment.java")
+s=p.read_text()
+if "mikael_video_background" not in s:
+    s=s.replace("import android.content.SharedPreferences;", "import android.content.SharedPreferences;\nimport android.content.Intent;\nimport android.net.Uri;")
+    s=s.replace("public class LauncherPreferenceFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {",
+                "public class LauncherPreferenceFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {\n    private static final int MIKAEL_VIDEO_PICKER = 9401;")
+    s=s.replace("setupNotificationRequestPreference();",
+                """setupNotificationRequestPreference();
+        Preference video = findPreference("mikael_video_background");
+        if (video != null) {
+            video.setOnPreferenceClickListener(pref -> {
+                Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                i.setType("video/*");
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+                startActivityForResult(i, MIKAEL_VIDEO_PICKER);
+                return true;
+            });
+        }""",1)
+    marker="    @Override\n    public void onResume()"
+    insert="""    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == MIKAEL_VIDEO_PICKER && resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
+            Uri uri = data.getData();
+            try {
+                requireContext().getContentResolver().takePersistableUriPermission(
+                        uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } catch (Exception ignored) {}
+            getPreferenceManager().getSharedPreferences().edit()
+                    .putString("mikael_video_uri", uri.toString())
+                    .putBoolean("mikael_video_enabled", true)
+                    .apply();
+            Preference pref = findPreference("mikael_video_background");
+            if (pref != null) pref.setSummary("Vídeo selecionado • toque para trocar");
+        }
+    }
+
+"""
+    s=s.replace(marker,insert+marker)
+    p.write_text(s)
+PY
+
+# Custom Forge + OptiFine + Minecraft version selector.
+cat > "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelForgeOptiFineFragment.java" <<'EOF'
+package net.kdt.pojavlaunch.fragments;
+
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.Spinner;
+import android.widget.TextView;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import net.kdt.pojavlaunch.JMinecraftVersionList;
+import net.kdt.pojavlaunch.R;
+import net.kdt.pojavlaunch.Tools;
+import net.kdt.pojavlaunch.JavaGUILauncherActivity;
+import net.kdt.pojavlaunch.extra.ExtraConstants;
+import net.kdt.pojavlaunch.extra.ExtraCore;
+import net.kdt.pojavlaunch.modloaders.ForgeDownloadTask;
+import net.kdt.pojavlaunch.modloaders.ForgeUtils;
+import net.kdt.pojavlaunch.modloaders.ModloaderDownloadListener;
+import net.kdt.pojavlaunch.modloaders.OptiFineDownloadTask;
+import net.kdt.pojavlaunch.modloaders.OptiFineUtils;
+import net.kdt.pojavlaunch.prefs.LauncherPreferences;
+
+public class MikaelForgeOptiFineFragment extends Fragment {
+    public static final String TAG="MIKAEL_FORGE_OPTIFINE";
+    private Spinner game, forge, optifine;
+    private TextView status;
+    private final List<String> forgeAll=new ArrayList<>();
+    private OptiFineUtils.OptiFineVersions ofAll;
+
+    public MikaelForgeOptiFineFragment(){ super(R.layout.fragment_mikael_forge_optifine); }
+
+    private void fill(Spinner s, List<String> values){
+        ArrayAdapter<String> a=new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_dropdown_item, values);
+        s.setAdapter(a);
+    }
+
+    @Override public void onViewCreated(@NonNull View v,@Nullable Bundle b){
+        game=v.findViewById(R.id.mfo_game); forge=v.findViewById(R.id.mfo_forge); optifine=v.findViewById(R.id.mfo_optifine); status=v.findViewById(R.id.mfo_status);
+        Button install=v.findViewById(R.id.mfo_install), back=v.findViewById(R.id.mfo_back);
+        List<String> games=new ArrayList<>();
+        JMinecraftVersionList table=(JMinecraftVersionList)ExtraCore.getValue(ExtraConstants.RELEASE_TABLE);
+        if(table!=null && table.versions!=null) for(JMinecraftVersionList.Version x:table.versions) if(x.id!=null && !games.contains(x.id)) games.add(x.id);
+        fill(game,games);
+        game.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
+            public void onNothingSelected(android.widget.AdapterView<?> p){}
+            public void onItemSelected(android.widget.AdapterView<?> p,View x,int pos,long id){ refreshLoaders(games.get(pos)); }
+        });
+        new Thread(()->{
+            try{
+                List<String> f=ForgeUtils.downloadForgeVersions();
+                requireActivity().runOnUiThread(()->{forgeAll.clear(); if(f!=null) forgeAll.addAll(f); if(!games.isEmpty()) refreshLoaders(games.get(0));});
+                ofAll=OptiFineUtils.downloadOptiFineVersions();
+                if(!games.isEmpty()) requireActivity().runOnUiThread(()->refreshLoaders(games.get(game.getSelectedItemPosition())));
+            }catch(Exception e){ requireActivity().runOnUiThread(()->status.setText("Não foi possível carregar Forge/OptiFine."));}
+        }).start();
+        install.setOnClickListener(x->installPair());
+        back.setOnClickListener(x->Tools.swapFragment(requireActivity(),MainMenuFragment.class,MainMenuFragment.TAG,null));
+    }
+
+    private void refreshLoaders(String mc){
+        List<String> fs=new ArrayList<>();
+        for(String f:forgeAll) if(f.startsWith(mc+"-")) fs.add(f);
+        fill(forge,fs);
+        List<String> os=new ArrayList<>();
+        if(ofAll!=null && ofAll.minecraftVersions!=null){
+            for(int i=0;i<ofAll.minecraftVersions.size();i++){
+                if(mc.equals(ofAll.minecraftVersions.get(i)) && i<ofAll.optifineVersions.size())
+                    for(OptiFineUtils.OptiFineVersion o:ofAll.optifineVersions.get(i)) os.add(o.versionName);
+            }
+        }
+        fill(optifine,os);
+        status.setText("Jogo: "+mc+" • Forge: "+fs.size()+" • OptiFine: "+os.size());
+    }
+
+    private void installPair(){
+        if(game.getSelectedItem()==null || forge.getSelectedItem()==null || optifine.getSelectedItem()==null){
+            status.setText("Selecione Minecraft, Forge e OptiFine compatíveis.");
+            return;
+        }
+        final String mc=game.getSelectedItem().toString();
+        final String fv=forge.getSelectedItem().toString();
+        final String ov=optifine.getSelectedItem().toString();
+        OptiFineUtils.OptiFineVersion selectedOF=null;
+        for(int i=0;i<ofAll.minecraftVersions.size();i++) if(mc.equals(ofAll.minecraftVersions.get(i))){
+            for(OptiFineUtils.OptiFineVersion o:ofAll.optifineVersions.get(i)) if(ov.equals(o.versionName)) selectedOF=o;
+        }
+        if(selectedOF==null){status.setText("OptiFine selecionado não foi encontrado.");return;}
+        status.setText("Baixando Forge + OptiFine...");
+        final OptiFineUtils.OptiFineVersion of=selectedOF;
+        new Thread(()->{
+            new ForgeDownloadTask(new ModloaderDownloadListener(){
+                public void onDownloadFinished(File forgeJar){
+                    new OptiFineDownloadTask(of,new ModloaderDownloadListener(){
+                        public void onDownloadFinished(File ofJar){
+                            requireActivity().runOnUiThread(()->{
+                                status.setText("Downloads concluídos. Abrindo instalador do Forge...");
+                                Intent i=new Intent(requireContext(),JavaGUILauncherActivity.class);
+                                ForgeUtils.addAutoInstallArgs(i,forgeJar,true);
+                                i.putExtra("mikael_optifine_jar",ofJar.getAbsolutePath());
+                                i.putExtra("mikael_minecraft_version",mc);
+                                startActivity(i);
+                            });
+                        }
+                        public void onDataNotAvailable(){fail("OptiFine não disponível");}
+                        public void onDownloadError(Exception e){fail("Erro no OptiFine: "+e.getMessage());}
+                        private void fail(String x){requireActivity().runOnUiThread(()->status.setText(x));}
+                    },requireActivity()).run();
+                }
+                public void onDataNotAvailable(){fail("Forge não disponível");}
+                public void onDownloadError(Exception e){fail("Erro no Forge: "+e.getMessage());}
+                private void fail(String x){requireActivity().runOnUiThread(()->status.setText(x));}
+            },fv).run();
+        }).start();
+    }
+}
+EOF
+
+cat > "$RES/layout/fragment_mikael_forge_optifine.xml" <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#0C0E12">
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="FORGE + OPTIFINE" android:textColor="#FFFFFF" android:textSize="26sp" android:textStyle="bold"/>
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="Selecione as 3 versões. O Forge e o OptiFine são baixados juntos." android:textColor="#9AA4B2" android:textSize="14sp"/>
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:text="VERSÃO DO JOGO" android:textColor="#4ADE80" android:textStyle="bold"/>
+<Spinner android:id="@+id/mfo_game" android:layout_width="match_parent" android:layout_height="52dp" android:background="@drawable/mikael_button"/>
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="VERSÃO DO FORGE" android:textColor="#4ADE80" android:textStyle="bold"/>
+<Spinner android:id="@+id/mfo_forge" android:layout_width="match_parent" android:layout_height="52dp" android:background="@drawable/mikael_button"/>
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="VERSÃO DO OPTIFINE" android:textColor="#4ADE80" android:textStyle="bold"/>
+<Spinner android:id="@+id/mfo_optifine" android:layout_width="match_parent" android:layout_height="52dp" android:background="@drawable/mikael_button"/>
+<TextView android:id="@+id/mfo_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="Carregando versões..." android:textColor="#9AA4B2"/>
+<Button android:id="@+id/mfo_install" android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="18dp" android:text="BAIXAR FORGE + OPTIFINE" android:textAllCaps="false" android:background="@drawable/mikael_button"/>
+<Button android:id="@+id/mfo_back" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="10dp" android:text="VOLTAR" android:textAllCaps="false" android:background="@drawable/mikael_button"/>
+</LinearLayout>
+</ScrollView>
+EOF
+
+# Replace launcher home layout with a video layer behind the custom UI.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/res/layout/fragment_launcher.xml")
+s=p.read_text()
+if 'mikael_video_background' not in s:
+    s=s.replace('<ScrollView ', '<VideoView android:id="@+id/mikael_video_background" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone" />\n<View android:layout_width="match_parent" android:layout_height="match_parent" android:background="#99000000" />\n<ScrollView ',1)
+    p.write_text(s)
+PY
