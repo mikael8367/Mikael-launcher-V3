@@ -525,3 +525,71 @@ if 'forge_optifine_button' not in s:
     s=s.replace(needle, needle+'\n  v.findViewById(R.id.forge_optifine_button).setOnClickListener(x->swapFragment(requireActivity(),MikaelForgeOptiFineFragment.class,MikaelForgeOptiFineFragment.TAG,null));')
 p.write_text(s)
 PY
+
+# Restore MainMenuFragment after generating the dedicated Forge+OptiFine fragment.
+cat > "$JAVA" <<'EOF'
+package net.kdt.pojavlaunch.fragments;
+import static net.kdt.pojavlaunch.Tools.*;
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.Toast;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.fragment.app.Fragment;
+import com.kdt.mcgui.mcVersionSpinner;
+import net.kdt.pojavlaunch.CustomControlsActivity;
+import net.kdt.pojavlaunch.LauncherActivity;
+import net.kdt.pojavlaunch.R;
+import net.kdt.pojavlaunch.extra.ExtraConstants;
+import net.kdt.pojavlaunch.extra.ExtraCore;
+import net.kdt.pojavlaunch.prefs.LauncherPreferences;
+import net.kdt.pojavlaunch.prefs.screens.LauncherPreferenceFragment;
+import net.kdt.pojavlaunch.progresskeeper.ProgressKeeper;
+import net.kdt.pojavlaunch.value.launcherprofiles.LauncherProfiles;
+import net.kdt.pojavlaunch.value.launcherprofiles.MinecraftProfile;
+import java.io.File;
+public class MainMenuFragment extends Fragment {
+ public static final String TAG="MainMenuFragment";
+ private mcVersionSpinner mVersionSpinner;
+ public MainMenuFragment(){super(R.layout.fragment_launcher);}
+ @Override public void onViewCreated(@NonNull View v,@Nullable Bundle b){
+  Button controls=v.findViewById(R.id.custom_control_button),settings=v.findViewById(R.id.settings_button),files=v.findViewById(R.id.open_files_button),logs=v.findViewById(R.id.share_logs_button),news=v.findViewById(R.id.news_button),discord=v.findViewById(R.id.discord_button),install=v.findViewById(R.id.install_jar_button),play=v.findViewById(R.id.play_button);
+  ImageButton profile=v.findViewById(R.id.edit_profile_button); mVersionSpinner=v.findViewById(R.id.mc_version_spinner);\n  v.findViewById(R.id.forge_optifine_button).setOnClickListener(x->swapFragment(requireActivity(),MikaelForgeOptiFineFragment.class,MikaelForgeOptiFineFragment.TAG,null));
+  controls.setOnClickListener(x->startActivity(new Intent(requireContext(),CustomControlsActivity.class)));
+  settings.setOnClickListener(x->swapFragment(requireActivity(),LauncherPreferenceFragment.class,LauncherActivity.SETTING_FRAGMENT_TAG,null));
+  news.setOnClickListener(x->openURL(requireActivity(),URL_HOME));
+  discord.setOnClickListener(x->openURL(requireActivity(),getString(R.string.discord_invite)));
+  logs.setOnClickListener(x->shareLog(requireContext()));
+  files.setOnClickListener(x->{if(!hasOnlineProfile()){hasNoOnlineProfileDialog(requireActivity());return;}openPath(requireContext(),getCurrentProfileDirectory(),false);});
+  if(hasOnlineProfile()){install.setOnClickListener(x->runInstaller(false));install.setOnLongClickListener(x->{runInstaller(true);return true;});}else install.setOnClickListener(x->hasNoOnlineProfileDialog(requireActivity()));
+  profile.setOnClickListener(x->mVersionSpinner.openProfileEditor(requireActivity()));
+  play.setOnClickListener(x->{if(hasMods("sodium")&&!LauncherPreferences.DEFAULT_PREF.getBoolean("sodium_override",false)){new AlertDialog.Builder(requireContext()).setTitle(R.string.sodium_warning_title).setMessage(R.string.sodium_warning_message).setNeutralButton(R.string.delete_sodium,(d,w)->{deleteSodiumMods();ExtraCore.setValue(ExtraConstants.LAUNCH_GAME,true);}).show();}else ExtraCore.setValue(ExtraConstants.LAUNCH_GAME,true);});
+ }
+ private File getCurrentProfileDirectory(){String p=LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE,null);if(!isValidString(p))return new File(DIR_GAME_NEW);LauncherProfiles.load();MinecraftProfile m=LauncherProfiles.mainProfileJson.profiles.get(p);return m==null?new File(DIR_GAME_NEW):getGameDirPath(m);}
+ private void runInstaller(boolean custom){if(ProgressKeeper.getTaskCount()==0)installMod(requireActivity(),custom);else Toast.makeText(requireContext(),R.string.tasks_ongoing,Toast.LENGTH_LONG).show();}
+ @Override public void onResume(){super.onResume();if(mVersionSpinner!=null)mVersionSpinner.reloadProfiles();}
+}
+EOF
+cat > "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelForgeOptiFineFragment.java" <<'EOF'
+package net.kdt.pojavlaunch.fragments;
+import android.os.Bundle;
+import android.view.View;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import net.kdt.pojavlaunch.R;
+import net.kdt.pojavlaunch.Tools;
+public class MikaelForgeOptiFineFragment extends Fragment {
+ public static final String TAG="MIKAEL_FORGE_OPTIFINE";
+ public MikaelForgeOptiFineFragment(){ super(R.layout.fragment_mikael_forge_optifine); }
+ @Override public void onViewCreated(@NonNull View v,@Nullable Bundle b){
+  v.findViewById(R.id.mfo_forge).setOnClickListener(x->Tools.swapFragment(requireActivity(),ForgeInstallFragment.class,ForgeInstallFragment.TAG,null));
+  v.findViewById(R.id.mfo_optifine).setOnClickListener(x->Tools.swapFragment(requireActivity(),OptiFineInstallFragment.class,OptiFineInstallFragment.TAG,null));
+  v.findViewById(R.id.mfo_back).setOnClickListener(x->Tools.swapFragment(requireActivity(),MainMenuFragment.class,MainMenuFragment.TAG,null));
+ }
+}
+EOF
