@@ -1268,6 +1268,28 @@ PY
 
 
 
+# FINAL BUTTON AUDIT: ensure every button present in the final Mikael home layout
+# has a real listener. This runs after all earlier MainMenu rewrites so later
+# patches cannot accidentally remove the handlers.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java")
+s=p.read_text()
+needle='ImageButton profile=v.findViewById(R.id.edit_profile_button); mVersionSpinner=v.findViewById(R.id.mc_version_spinner);'
+decl=needle+'\n   Button modLibrary=v.findViewById(R.id.mod_library_button),contentLibrary=v.findViewById(R.id.content_library_button),forgeOptiFine=v.findViewById(R.id.forge_optifine_button);'
+if 'Button modLibrary=v.findViewById(R.id.mod_library_button)' not in s:
+    if needle not in s: raise SystemExit('MainMenu profile declaration not found')
+    s=s.replace(needle,decl,1)
+s=s.replace('files.setOnClickListener(x->{if(!hasOnlineProfile()){hasNoOnlineProfileDialog(requireActivity());return;}openPath(requireContext(),getCurrentProfileDirectory(),false);});', 'files.setOnClickListener(x->openPath(requireContext(),getCurrentProfileDirectory(),false));')
+s=s.replace('if(hasOnlineProfile()){install.setOnClickListener(x->runInstaller(false));install.setOnLongClickListener(x->{runInstaller(true);return true;});}else install.setOnClickListener(x->hasNoOnlineProfileDialog(requireActivity()));', 'install.setOnClickListener(x->runInstaller(false));\n   install.setOnLongClickListener(x->{runInstaller(true);return true;});')
+anchor='discord.setOnClickListener(x->openURL(requireActivity(),getString(R.string.discord_invite)));'
+handlers=anchor+'\n   if(modLibrary!=null) modLibrary.setOnClickListener(x->swapFragment(requireActivity(),MikaelModLibraryFragment.class,MikaelModLibraryFragment.TAG,null));\n   if(contentLibrary!=null) contentLibrary.setOnClickListener(x->swapFragment(requireActivity(),MikaelContentLibraryFragment.class,MikaelContentLibraryFragment.TAG,null));\n   if(forgeOptiFine!=null) forgeOptiFine.setOnClickListener(x->swapFragment(requireActivity(),MikaelForgeOptiFineFragment.class,MikaelForgeOptiFineFragment.TAG,null));'
+if 'modLibrary.setOnClickListener' not in s:
+    if anchor not in s: raise SystemExit('MainMenu listener anchor not found')
+    s=s.replace(anchor,handlers,1)
+p.write_text(s)
+PY
+
 # FINAL FIX: account selection screen.
 # Local/offline accounts work without Microsoft; Mod Library and Forge + OptiFine
 # are available directly from "Adicionar conta".
