@@ -550,7 +550,17 @@ if 'setPadding(0, 12, 0, 24)' not in s:
 ''')
 p.write_text(s)
 PY
-grep -q '<string name="app_name"' "$RES/values/strings.xml" && sed -i 's#<string name="app_name"[^<]*>[^<]*</string>#<string name="app_name" translatable="false">Mikael Launcher V3</string>#' "$RES/values/strings.xml"
+python3 - <<'PY'
+from pathlib import Path
+import re
+p=Path("app_pojavlauncher/src/main/res/values/strings.xml")
+s=p.read_text()
+line='<string name="app_name" translatable="false">Mikael Launcher V3</string>'
+s2=re.sub(r'<string name="app_name"[^>]*>.*?</string>', line, s, count=1)
+if s2 == s:
+    s2=s.replace('</resources>', '  '+line+'\n</resources>')
+p.write_text(s2)
+PY
 
 python3 - <<'PY'
 from pathlib import Path
