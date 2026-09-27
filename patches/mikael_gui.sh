@@ -4895,48 +4895,6 @@ cat > "$RES/layout/fragment_mikael_crash_resolver.xml" <<'EOF'
 </LinearLayout>
 EOF
 
-# PRO MAX 2: stronger automatic repair safety and deeper mod/file checks.
-python3 - <<'PY'
-from pathlib import Path
-p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelCrashResolverFragment.java")
-s=p.read_text()
-
-# Transactional downloads: never expose a partial JAR as an installed mod.
-old='''    private void download(String url,File out)throws Exception{
-        HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection();
-        c.setRequestProperty("User-Agent","Mikael-Launcher-V3/AutoResolver-PRO");
-        c.setConnectTimeout(15000);c.setReadTimeout(90000);
-        int code=c.getResponseCode();
-        if(code>=400)throw new Exception("Download HTTP "+code);
-        try(InputStream in=c.getInputStream();FileOutputStream o=new FileOutputStream(out)){
-            byte[] b=new byte[16384];int n;while((n=in.read(b))!=-1)o.write(b,0,n);
-        }
-        if(out.length()<1024)throw new Exception("Arquivo baixado parece inválido: "+out.getName());
-        if(!isReadableJar(out)){out.delete();throw new Exception("JAR baixado inválido: "+out.getName());}
-    }'''
-new='''    private void download(String url,File out)throws Exception{
-        File tmp=new File(out.getAbsolutePath()+".mikael.part");
-        if(tmp.exists())tmp.delete();
-        HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection();
-        c.setRequestProperty("User-Agent","Mikael-Launcher-V3/AutoResolver-PRO-MAX");
-        c.setConnectTimeout(15000);c.setReadTimeout(90000);
-        int code=c.getResponseCode();
-        if(code>=400)throw new Exception("Download HTTP "+code);
-        int expected=c.getContentLength();
-        try(InputStream in=c.getInputStream();FileOutputStream o=new FileOutputStream(tmp)){
-            byte[] b=new byte[16384];int n;while((n=in.read(b))!=-1)o.write(b,0,n);
-        }
-        if(tmp.length()<1024 || (expected>0 && tmp.length()<expected)){
-            tmp.delete();throw new Exception("Download incompleto: "+out.getName());
-        }
-        if(!isReadableJar(tmp)){tmp.delete();throw new Exception("JAR baixado inválido: "+out.getName());}
-        if(out.exists())out.delete();
-        if(!tmp.renameTo(out)){tmp.delete();throw new Exception("Não foi possível finalizar "+out.getName());}
-    }'''
-if old not in s:
-    raise SystemExit("download block not found")
-s=s.replace(old,new,1)
-
 # BUILD SANITIZER: final Java-8/source compatibility pass.
 python3 - <<'PY'
 from pathlib import Path
