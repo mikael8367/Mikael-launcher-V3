@@ -2138,3 +2138,17 @@ if 'private void styleMikaelProfileButtons(View view)' not in s:
     s=s.replace(marker,methods+marker,1)
 p.write_text(s)
 PY
+
+# FINAL UI TUNE: reduce launcher buttons slightly for a more comfortable compact layout.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/res/layout/fragment_launcher.xml")
+s=p.read_text()
+# Main launcher 2-column buttons
+s=s.replace('android:layout_height="@dimen/_52sdp"', 'android:layout_height="@dimen/_46sdp"')
+# Content buttons
+s=s.replace('android:layout_height="@dimen/_50sdp"', 'android:layout_height="@dimen/_46sdp"')
+# Play button
+s=s.replace('android:layout_height="@dimen/_54sdp"', 'android:layout_height="@dimen/_50sdp"')
+p.write_text(s)
+PY
