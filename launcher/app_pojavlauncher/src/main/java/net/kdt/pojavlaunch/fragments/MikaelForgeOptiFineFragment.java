@@ -56,7 +56,7 @@ public class MikaelForgeOptiFineFragment extends Fragment {
         new Thread(()->{
             try{
                 List<String> f=ForgeUtils.downloadForgeVersions();
-                requireActivity().runOnUiThread(()->{forgeAll.clear(); if(f!=null) forgeAll.addAll(f); if(!games.isEmpty()) refreshLoaders(games.get(0));});
+                android.app.Activity a=getActivity(); if(a==null)return; a.runOnUiThread(()->{forgeAll.clear(); if(f!=null) forgeAll.addAll(f); if(!games.isEmpty()) refreshLoaders(games.get(0));});
                 ofAll=OptiFineUtils.downloadOptiFineVersions();
                 if(!games.isEmpty()) requireActivity().runOnUiThread(()->refreshLoaders(games.get(game.getSelectedItemPosition())));
             }catch(Exception e){ requireActivity().runOnUiThread(()->status.setText("Não foi possível carregar Forge/OptiFine."));}
@@ -100,7 +100,7 @@ public class MikaelForgeOptiFineFragment extends Fragment {
                 public void onDownloadFinished(File forgeJar){
                     new OptiFineDownloadTask(of,new ModloaderDownloadListener(){
                         public void onDownloadFinished(File ofJar){
-                            requireActivity().runOnUiThread(()->{
+                            android.app.Activity a=getActivity(); if(a==null)return; a.runOnUiThread(()->{
                                 status.setText("Downloads concluídos. Abrindo instalador do Forge...");
                                 Intent i=new Intent(requireContext(),JavaGUILauncherActivity.class);
                                 ForgeUtils.addAutoInstallArgs(i,forgeJar,true);

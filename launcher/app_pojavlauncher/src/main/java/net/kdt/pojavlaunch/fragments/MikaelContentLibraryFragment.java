@@ -12,7 +12,7 @@ public class MikaelContentLibraryFragment extends Fragment {
  void load(){int t=type.getSelectedItemPosition(); String q=search.getText().toString().trim(); String selectedVersion=detectMinecraftVersion(); status.setText(selectedVersion==null?"Pesquisando...":"Pesquisando para Minecraft "+selectedVersion+"..."); new Thread(()->{try{
   String classId=t==0?"6":t==1?"12":t==2?"6552":"17"; String mcVersion=detectMinecraftVersion(); String u="https://api.curseforge.com/v1/mods/search?gameId=432&classId="+classId+"&pageSize=30"; if(mcVersion!=null&&!mcVersion.isEmpty())u+="&gameVersion="+URLEncoder.encode(mcVersion,"UTF-8"); if(!q.isEmpty())u+="&searchFilter="+URLEncoder.encode(q,"UTF-8");
   JSONArray a=json(u).optJSONArray("data"); List<Item> out=new ArrayList<>(); if(a!=null)for(int i=0;i<a.length();i++){JSONObject m=a.getJSONObject(i); JSONArray fs=m.optJSONArray("latestFiles"); JSONObject f=fs!=null&&fs.length()>0?fs.optJSONObject(0):null; if(f!=null)out.add(new Item(m.optString("id"),m.optString("name","Item"),m.optString("summary",""),f.optString("id"),f.optString("displayName",f.optString("fileName","download"))));}
-  requireActivity().runOnUiThread(()->{items.clear();items.addAll(out);adapter.clear();for(Item x:items)adapter.add(x.name+"\n"+x.file);adapter.notifyDataSetChanged();status.setText(out.size()+" resultados");});
+  android.app.Activity a=getActivity(); if(a==null)return; a.runOnUiThread(()->{items.clear();items.addAll(out);adapter.clear();for(Item x:items)adapter.add(x.name+"\n"+x.file);adapter.notifyDataSetChanged();status.setText(out.size()+" resultados");});
  }catch(Exception e){requireActivity().runOnUiThread(()->status.setText("Erro: "+e.getMessage()));}}).start();}
  void confirm(Item x){new AlertDialog.Builder(requireContext()).setTitle(x.name).setMessage(x.summary+"\n\n"+x.file).setNegativeButton("CANCELAR",null).setPositiveButton("BAIXAR",(d,w)->download(x)).show();}
  void download(Item x){status.setText("Baixando...");new Thread(()->{try{
@@ -21,7 +21,7 @@ public class MikaelContentLibraryFragment extends Fragment {
   String fn=x.file.replaceAll("[\\\\/:*?\"<>|]","_"); File out=new File(dir,fn); HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setConnectTimeout(15000);c.setReadTimeout(60000);
   try(InputStream in=c.getInputStream();FileOutputStream o=new FileOutputStream(out)){byte[] b=new byte[8192];int n;while((n=in.read(b))!=-1)o.write(b,0,n);}
   requireActivity().runOnUiThread(()->status.setText("Instalado em "+folder+"/: "+out.getName()));
- }catch(Exception e){requireActivity().runOnUiThread(()->status.setText("Falha: "+e.getMessage()));}}).start();}
+ }catch(Exception e){android.app.Activity a=getActivity(); if(a!=null)a.runOnUiThread(()->status.setText("Falha: "+e.getMessage()));}}).start();}
  String detectMinecraftVersion(){
   try{
    String cur=LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE,null);

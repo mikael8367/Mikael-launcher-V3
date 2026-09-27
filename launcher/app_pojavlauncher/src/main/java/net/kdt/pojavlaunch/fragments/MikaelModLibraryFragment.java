@@ -61,12 +61,12 @@ public class MikaelModLibraryFragment extends Fragment {
                     JSONObject m=data.getJSONObject(i), f=m.optJSONArray("latestFiles")!=null?m.getJSONArray("latestFiles").optJSONObject(0):null;
                     if(f!=null) found.add(new ModItem(m.optString("id"),m.optString("name","Mod"),m.optString("summary",""),f.optString("id"),f.optString("displayName",f.optString("fileName","Arquivo"))));
                 }
-                requireActivity().runOnUiThread(()->{
+                android.app.Activity a=getActivity(); if(a==null)return; a.runOnUiThread(()->{
                     mods.clear(); mods.addAll(found); adapter.clear();
                     for(ModItem m:mods) adapter.add(m.name+"\n"+m.fileName);
                     adapter.notifyDataSetChanged(); status.setText(found.size()+" mods encontrados • toque para instalar");
                 });
-            } catch(Exception e){ requireActivity().runOnUiThread(()->status.setText("Erro: "+e.getMessage())); }
+            } catch(Exception e){ android.app.Activity a=getActivity(); if(a!=null)a.runOnUiThread(()->status.setText("Erro: "+e.getMessage())); }
         }).start();
     }
 
@@ -91,7 +91,7 @@ public class MikaelModLibraryFragment extends Fragment {
                     byte[] b=new byte[8192]; int n; while((n=in.read(b))!=-1)o.write(b,0,n);
                 }
                 requireActivity().runOnUiThread(()->status.setText("Instalado em mods/: "+out.getName()));
-            }catch(Exception e){requireActivity().runOnUiThread(()->status.setText("Falha: "+e.getMessage()));}
+            }catch(Exception e){android.app.Activity a=getActivity(); if(a!=null)a.runOnUiThread(()->status.setText("Falha: "+e.getMessage()));}
         }).start();
     }
 
