@@ -3810,14 +3810,6 @@ if p.exists():
     x=re.sub(r'Matcher pm=Pattern\\.compile\(".*?"\)', 'Matcher pm=Pattern.compile("(?i)([a-z0-9_.-]{2,80}\\\\.jar)")', x, count=1)
     p.write_text(x)
 
-p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelCrashResolverFragment.java")
-if p.exists():
-    x=p.read_text()
-    x=re.sub(r'private static final Pattern JAR=.*?;', 'private static final Pattern JAR=Pattern.compile("(?i)([A-Za-z0-9_.()+ -]{2,180}\\\\.jar)");', x, count=1)
-    x=re.sub(r'private static final Pattern OUTDATED=.*?;', 'private static final Pattern OUTDATED=Pattern.compile("(?i)([A-Za-z0-9_.-]+)[^\\\\n]{0,100}(?:is outdated|outdated|update to)");', x, count=1)
-    x=re.sub(r'private static final Pattern BAD_FILE=.*?;', 'private static final Pattern BAD_FILE=Pattern.compile("(?i)([A-Za-z0-9_.()+ -]{2,180}\\\\.(?:jar|zip|json|toml))");', x, count=1)
-    p.write_text(x)
-
 p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelModLibraryFragment.java")
 if p.exists():
     x=p.read_text()
