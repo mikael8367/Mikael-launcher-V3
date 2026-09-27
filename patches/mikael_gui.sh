@@ -162,4 +162,76 @@ s=p.read_text().replace(' android:drawableEnd="@drawable/spinner_arrow" app:draw
 p.write_text(s)
 PY
 
+
+# Real FPS Booster settings.
+mkdir -p "$RES/xml"
+cat > "$RES/xml/pref_fps_booster.xml" <<'EOF'
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <net.kdt.pojavlaunch.prefs.BackButtonPreference/>
+    <PreferenceCategory android:title="MIKAEL FPS BOOSTER">
+        <androidx.preference.SwitchPreferenceCompat android:key="mikael_fps_booster_enabled" android:title="FPS Booster" android:summary="Ativa o perfil de desempenho do Mikael Launcher" android:defaultValue="false"/>
+        <androidx.preference.SwitchPreferenceCompat android:key="mikael_sustained_performance" android:title="Desempenho sustentado" android:summary="Mantém o modo de desempenho sustentado durante a sessão" android:defaultValue="true"/>
+        <androidx.preference.SwitchPreferenceCompat android:key="mikael_disable_vsync" android:title="Desativar VSync" android:summary="Pode reduzir latência e aumentar FPS, dependendo do aparelho" android:defaultValue="true"/>
+        <androidx.preference.SeekBarPreference android:key="mikael_resolution" android:title="Resolução interna" android:summary="Reduz a resolução renderizada para ganhar FPS" android:min="50" android:max="100" android:defaultValue="75" app:showSeekBarValue="true"/>
+    </PreferenceCategory>
+</PreferenceScreen>
+EOF
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/res/xml/pref_main.xml")
+s=p.read_text()
+needle='''<PreferenceCategory
+        android:title="@string/preference_category_main_categories"
+        >'''
+pref='''<Preference
+            android:key="mikael_fps_booster"
+            android:title="FPS Booster"
+            android:summary="Otimização de desempenho para Minecraft"
+            android:fragment="net.kdt.pojavlaunch.prefs.screens.MikaelFpsBoosterFragment" />
+
+        '''
+if "key=\"mikael_fps_booster\"" not in s:
+    s=s.replace(needle, needle+"\\n\\n        "+pref,1)
+p.write_text(s)
+PY
+cat > "$ROOT/java/net/kdt/pojavlaunch/prefs/screens/MikaelFpsBoosterFragment.java" <<'EOF'
+package net.kdt.pojavlaunch.prefs.screens;
+
+import android.content.SharedPreferences;
+import android.os.Bundle;
+import androidx.annotation.Nullable;
+import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.SwitchPreferenceCompat;
+import androidx.preference.SeekBarPreference;
+import net.kdt.pojavlaunch.R;
+
+public class MikaelFpsBoosterFragment extends PreferenceFragmentCompat {
+    private SharedPreferences prefs;
+
+    @Override public void onCreatePreferences(@Nullable Bundle b, @Nullable String rootKey) {
+        addPreferencesFromResource(R.xml.pref_fps_booster);
+        prefs = getPreferenceManager().getSharedPreferences();
+        SwitchPreferenceCompat booster = findPreference("mikael_fps_booster_enabled");
+        SwitchPreferenceCompat sustained = findPreference("mikael_sustained_performance");
+        SwitchPreferenceCompat vsync = findPreference("mikael_disable_vsync");
+        SeekBarPreference resolution = findPreference("mikael_resolution");
+        if (booster != null) booster.setOnPreferenceChangeListener((p,v) -> { apply((Boolean)v,sustained,vsync,resolution); return true; });
+        if (sustained != null) sustained.setOnPreferenceChangeListener((p,v) -> { if (booster != null && booster.isChecked()) apply(true,sustained,vsync,resolution); return true; });
+        if (vsync != null) vsync.setOnPreferenceChangeListener((p,v) -> { if (booster != null && booster.isChecked()) apply(true,sustained,vsync,resolution); return true; });
+        if (resolution != null) resolution.setOnPreferenceChangeListener((p,v) -> { if (booster != null && booster.isChecked()) apply(true,sustained,vsync,resolution); return true; });
+        if (prefs.getBoolean("mikael_fps_booster_enabled", false)) apply(true,sustained,vsync,resolution);
+    }
+
+    private void apply(boolean enabled, SwitchPreferenceCompat sustained, SwitchPreferenceCompat vsync, SeekBarPreference resolution) {
+        SharedPreferences.Editor e=prefs.edit();
+        if (!enabled) {
+            e.putBoolean("sustainedPerformance",false).putBoolean("force_vsync",false).putInt("resolutionRatio",100);
+        } else {
+            e.putBoolean("sustainedPerformance",sustained==null || sustained.isChecked()).putBoolean("force_vsync",false);
+            e.putInt("resolutionRatio",resolution==null?75:resolution.getValue());
+        }
+        e.apply();
+    }
+}
+EOF
 grep -q '<string name="app_name"' "$RES/values/strings.xml" && sed -i 's#<string name="app_name"[^<]*>[^<]*</string>#<string name="app_name" translatable="false">Mikael Launcher V3</string>#' "$RES/values/strings.xml"
