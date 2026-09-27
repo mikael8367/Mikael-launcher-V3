@@ -2063,16 +2063,15 @@ python3 - <<'PY'
 from pathlib import Path
 p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelModLibraryFragment.java")
 s=p.read_text()
-bad='''        JSONArray versions=getPublic("https://api.modrinth.com/v2/project/"+URLEncoder.encode(projectId,"UTF-8")+"/version?game_versions="+URLEncoder.encode("[\""+mc+"\"]","UTF-8")).optJSONArray("");
-        if(versions==null){
-            JSONArray arr=new JSONArray(getRawPublic("https://api.modrinth.com/v2/project/"+URLEncoder.encode(projectId,"UTF-8")+"/version?game_versions="+URLEncoder.encode("[\""+mc+"\"]","UTF-8")));
-            versions=arr;
-        }'''
+bad='''        String versionUrl="https://api.modrinth.com/v2/project/"+URLEncoder.encode(projectId,"UTF-8")+"/version?game_versions="+URLEncoder.encode("[\""+mc+"\"]","UTF-8");
+        JSONArray versions=new JSONArray(getRawPublic(versionUrl));'''
 good='''        String versionUrl="https://api.modrinth.com/v2/project/"+URLEncoder.encode(projectId,"UTF-8")+"/version?game_versions="+URLEncoder.encode("[\""+mc+"\"]","UTF-8");
         JSONArray versions=new JSONArray(getRawPublic(versionUrl));'''
-if bad not in s:
-    raise SystemExit("Modrinth versions block not found")
-p.write_text(s.replace(bad,good,1))
+if bad in s:
+    s=s.replace(bad,good,1)
+else:
+    raise SystemExit("expected Modrinth parsing block not found in generated source")
+p.write_text(s)
 PY
 
 # FINAL FIX: profile creation/installers must not require a Microsoft account.
