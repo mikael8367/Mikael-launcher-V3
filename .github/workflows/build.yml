@@ -1,0 +1,40 @@
+name: Build Mikael Launcher APK
+
+on:
+  push:
+    branches: ["main", "master"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Mikael Launcher
+        uses: actions/checkout@v4
+
+      - name: Checkout upstream launcher
+        run: |
+          git clone --recursive --depth 1 https://github.com/AngelAuraMC/Amethyst-Android.git launcher
+
+      - name: Prepare branding
+        working-directory: launcher
+        run: |
+          find app_pojavlauncher/src/main/res -type f -name '*.xml' -print0 | xargs -0 sed -i             -e 's/Angel Aura Amethyst/Mikael Launcher/g'             -e 's/Amethyst Launcher/Mikael Launcher/g'             -e 's/PojavLauncher/Mikael Launcher/g' || true
+
+      - name: Make Gradle executable
+        working-directory: launcher
+        run: chmod +x gradlew
+
+      - name: Build debug APK
+        working-directory: launcher
+        run: ./gradlew :app_pojavlauncher:assembleDebug --no-daemon --stacktrace
+
+      - name: Publish APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mikael-Launcher-debug
+          path: launcher/app_pojavlauncher/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
