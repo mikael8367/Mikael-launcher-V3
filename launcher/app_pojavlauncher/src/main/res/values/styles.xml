@@ -45,16 +45,12 @@
     <item name="switchPreferenceStyle">@style/MikaelSwitchPreferenceStyle</item>
     <item name="switchPreferenceCompatStyle">@style/MikaelSwitchPreferenceStyle</item>
     <item name="seekBarPreferenceStyle">@style/MikaelPreferenceStyle</item>
-    <item name="preferenceCategoryStyle">@style/MikaelPreferenceCategoryStyle</item>
 </style>
 <style name="MikaelPreferenceStyle" parent="@style/Preference.Material">
     <item name="android:layout">@layout/mikael_preference</item>
 </style>
 <style name="MikaelSwitchPreferenceStyle" parent="@style/Preference.SwitchPreference">
     <item name="android:layout">@layout/mikael_preference</item>
-</style>
-<style name="MikaelPreferenceCategoryStyle" parent="@style/Preference.Category.Material">
-    <item name="android:layout">@layout/mikael_preference_category</item>
 </style>
 
 </resources>
