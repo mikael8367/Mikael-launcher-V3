@@ -4884,3 +4884,176 @@ cat > "$RES/layout/fragment_mikael_crash_resolver.xml" <<'EOF'
     </LinearLayout>
 </LinearLayout>
 EOF
+
+# PRO MAX 2: stronger automatic repair safety and deeper mod/file checks.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelCrashResolverFragment.java")
+s=p.read_text()
+
+# Transactional downloads: never expose a partial JAR as an installed mod.
+old='''    private void download(String url,File out)throws Exception{
+        HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection();
+        c.setRequestProperty("User-Agent","Mikael-Launcher-V3/AutoResolver-PRO");
+        c.setConnectTimeout(15000);c.setReadTimeout(90000);
+        int code=c.getResponseCode();
+        if(code>=400)throw new Exception("Download HTTP "+code);
+        try(InputStream in=c.getInputStream();FileOutputStream o=new FileOutputStream(out)){
+            byte[] b=new byte[16384];int n;while((n=in.read(b))!=-1)o.write(b,0,n);
+        }
+        if(out.length()<1024)throw new Exception("Arquivo baixado parece inválido: "+out.getName());
+        if(!isReadableJar(out)){out.delete();throw new Exception("JAR baixado inválido: "+out.getName());}
+    }'''
+new='''    private void download(String url,File out)throws Exception{
+        File tmp=new File(out.getAbsolutePath()+".mikael.part");
+        if(tmp.exists())tmp.delete();
+        HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection();
+        c.setRequestProperty("User-Agent","Mikael-Launcher-V3/AutoResolver-PRO-MAX");
+        c.setConnectTimeout(15000);c.setReadTimeout(90000);
+        int code=c.getResponseCode();
+        if(code>=400)throw new Exception("Download HTTP "+code);
+        int expected=c.getContentLength();
+        try(InputStream in=c.getInputStream();FileOutputStream o=new FileOutputStream(tmp)){
+            byte[] b=new byte[16384];int n;while((n=in.read(b))!=-1)o.write(b,0,n);
+        }
+        if(tmp.length()<1024 || (expected>0 && tmp.length()<expected)){
+            tmp.delete();throw new Exception("Download incompleto: "+out.getName());
+        }
+        if(!isReadableJar(tmp)){tmp.delete();throw new Exception("JAR baixado inválido: "+out.getName());}
+        if(out.exists())out.delete();
+        if(!tmp.renameTo(out)){tmp.delete();throw new Exception("Não foi possível finalizar "+out.getName());}
+    }'''
+if old not in s:
+    raise SystemExit("download block not found")
+s=s.replace(old,new,1)
+
+# Add an explicit audit pass before restore maps are written.
+marker='''        writeRestoreMap(session,moved);'''
+if "private void advancedRepairAudit(" not in s:
+    extra='''    private void advancedRepairAudit(String text,String l,File dir,String mc,String loader,
+                                     List<ModInfo> mods,File session,List<String> moved,List<Action> actions){
+        // Duplicate mod IDs: only touch them when the crash log explicitly reports a duplicate.
+        if(hasAny(l,"duplicate mod","duplicate mods","already registered","found more than one file for mod")){
+            Map<String,List<ModInfo>> groups=new LinkedHashMap<>();
+            for(ModInfo m:mods) if(m.id!=null&&!m.id.isEmpty())
+                groups.computeIfAbsent(slugNorm(m.id),k->new ArrayList<>()).add(m);
+            for(List<ModInfo> g:groups.values()){
+                if(g.size()<2)continue;
+                ModInfo keep=g.get(0);
+                for(ModInfo m:g)if(compareVersions(m.version,keep.version)>0)keep=m;
+                for(ModInfo m:g)if(m!=keep && quarantine(m.file,session,"duplicate_mods",m.file.getName(),moved))
+                    actions.add(new Action("DUPLICADO: "+m.file.getName()+" isolado; mantido "+keep.file.getName(),false));
+            }
+        }
+
+        // If a loader mismatch is explicitly reported, prefer an already-installed compatible loader.
+        String expected=explicitLoaderFromLog(l);
+        if(expected!=null && !expected.equalsIgnoreCase(loader) && mc!=null &&
+                hasAny(l,"wrong loader","wrong modloader","incompatible mod","requires "+expected.toLowerCase(Locale.ROOT))){
+            String alt=findInstalledVersionForLoader(new File(dir,"versions"),mc,expected);
+            if(alt!=null){
+                try{
+                    LauncherProfiles.load();
+                    MinecraftProfile p=LauncherProfiles.getCurrentProfile();
+                    backupProfile(session,p.lastVersionId);
+                    p.lastVersionId=alt;
+                    LauncherProfiles.write();
+                    actions.add(new Action("MODLOADER RECONCILIADO: "+loader+" → "+expected+" ("+alt+")",false));
+                }catch(Exception ignored){}
+            }else{
+                actions.add(new Action("MODLOADER: "+expected+" necessário, mas não instalado; nada arriscado foi baixado",true));
+            }
+        }
+
+        // Regenerateable Mixin state can be quarantined when the failure is explicitly a Mixin crash.
+        if(hasAny(l,"mixinapplyerror","mixin transformation failed","invalid injection","injectionpoint")){
+            File mixin=new File(dir,".mixin.out");
+            if(mixin.exists() && quarantine(mixin,session,"mixin_cache",mixin.getName(),moved))
+                actions.add(new Action("MIXIN: .mixin.out isolado para regeneração",false));
+        }
+
+        // Corrupt JARs outside mods are quarantined so the normal dependency downloader can replace them.
+        if(hasAny(l,"invalid or corrupt jarfile","zip end header not found","zipexception","failed to load jar")){
+            Matcher m=JAR.matcher(text);
+            while(m.find()){
+                File f=findNamedFile(dir,m.group(1).trim());
+                if(f!=null && !isUnder(f,new File(dir,"mods"))){
+                    if(quarantine(f,session,"corrupt_files",f.getName(),moved))
+                        actions.add(new Action("ARQUIVO CORROMPIDO: "+f.getName()+" isolado para novo download",false));
+                    break;
+                }
+            }
+        }
+
+        // Remove only clearly partial download artifacts; worlds and user data are never touched.
+        if(hasAny(l,"download failed","failed to download","connection reset","sockettimeoutexception","unknownhostexception")){
+            int n=cleanTemps(dir);
+            if(n>0)actions.add(new Action("DOWNLOAD: "+n+" arquivos parciais removidos",false));
+        }
+    }
+
+    private int compareVersions(String a,String b){
+        String[] x=(a==null?"":a).split("[^0-9]+");
+        String[] y=(b==null?"":b).split("[^0-9]+");
+        int n=Math.max(x.length,y.length);
+        for(int i=0;i<n;i++){
+            int xi=i<x.length&&!x[i].isEmpty()?parseIntSafe(x[i]):0;
+            int yi=i<y.length&&!y[i].isEmpty()?parseIntSafe(y[i]):0;
+            if(xi!=yi)return Integer.compare(xi,yi);
+        }
+        return 0;
+    }
+
+    private int parseIntSafe(String s){try{return Integer.parseInt(s);}catch(Exception e){return 0;}}
+
+    private String explicitLoaderFromLog(String l){
+        if(hasAny(l,"requires fabric loader","requires fabricloader"))return "Fabric";
+        if(hasAny(l,"requires quilt loader"))return "Quilt";
+        if(hasAny(l,"requires neoforge","net.neoforged"))return "NeoForge";
+        if(hasAny(l,"requires forge","net.minecraftforge"))return "Forge";
+        return null;
+    }
+
+    private File findNamedFile(File root,String name){
+        if(root==null||name==null||name.isEmpty())return null;
+        ArrayList<File> stack=new ArrayList<>();stack.add(root);int n=0;
+        while(!stack.isEmpty()&&n++<3000){
+            File d=stack.remove(stack.size()-1);if(d==null||!d.exists())continue;
+            if(d.isFile()){if(d.getName().equalsIgnoreCase(name))return d;continue;}
+            File[] fs=d.listFiles();if(fs==null)continue;
+            for(File f:fs){
+                if(f.isFile()&&f.getName().equalsIgnoreCase(name))return f;
+                if(f.isDirectory()&&!f.getName().equalsIgnoreCase("saves"))stack.add(f);
+            }
+        }
+        return null;
+    }
+
+    private boolean isUnder(File f,File parent){
+        try{return f.getCanonicalPath().startsWith(parent.getCanonicalPath()+File.separator);}
+        catch(Exception e){return false;}
+    }
+
+'''
+    if marker not in s:
+        raise SystemExit("restore map marker not found")
+    s=s.replace(marker,extra+marker,1)
+
+# Call the advanced pass after the existing repair phases.
+needle='''        // L) Empty mod directory sanity check: create it if a mods-related crash occurred.
+        if(hasAny(l,"modresolution","mod loading","mixin","fabricloader","modlauncher")){'''
+if "advancedRepairAudit(text,l,dir,mc,loader,mods,session,moved,actions);" not in s:
+    pos=s.find('''        writeRestoreMap(session,moved);''')
+    if pos<0: raise SystemExit("restore map call not found")
+    s=s[:pos]+'        advancedRepairAudit(text,l,dir,mc,loader,mods,session,moved,actions);\n\n'+s[pos:]
+
+p.write_text(s)
+PY
+
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/res/layout/fragment_mikael_crash_resolver.xml")
+s=p.read_text()
+s=s.replace("RESOLVER AUTOMÁTICO PRO++","RESOLVER AUTOMÁTICO PRO MAX")
+p.write_text(s)
+PY
