@@ -163,6 +163,143 @@ p.write_text(s)
 PY
 
 
+
+# Ely.by account support: custom third login option and real Ely authentication.
+cat > "$RES/layout/fragment_select_auth_method.xml" <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:gravity="center" android:orientation="vertical" android:padding="24dp"
+    android:background="#0C0E12">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="26dp" android:background="#171A20">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="ADICIONAR CONTA" android:textStyle="bold" android:textSize="24sp"
+            android:textColor="#FFFFFF" android:layout_gravity="center_horizontal" android:layout_marginBottom="22dp"/>
+        <Button android:id="@+id/button_microsoft_authentication" android:layout_width="match_parent"
+            android:layout_height="52dp" android:text="MICROSOFT ACCOUNT"/>
+        <Button android:id="@+id/button_ely_authentication" android:layout_width="match_parent"
+            android:layout_height="52dp" android:text="ELY.BY ACCOUNT" android:layout_marginTop="12dp"/>
+        <Button android:id="@+id/button_local_authentication" android:layout_width="match_parent"
+            android:layout_height="52dp" android:text="LOCAL ACCOUNT" android:layout_marginTop="12dp"/>
+    </LinearLayout>
+</LinearLayout>
+EOF
+
+cat > "$RES/layout/fragment_ely_login.xml" <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:gravity="center" android:orientation="vertical" android:padding="24dp"
+    android:background="#0C0E12">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="24dp" android:background="#171A20">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="ELY.BY" android:textStyle="bold" android:textSize="26sp"
+            android:textColor="#FFFFFF" android:layout_gravity="center_horizontal"/>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Entre com sua conta Ely.by" android:textColor="#AEB4C0"
+            android:gravity="center" android:layout_marginBottom="20dp"/>
+        <EditText android:id="@+id/ely_username" android:layout_width="match_parent" android:layout_height="52dp"
+            android:hint="E-mail ou usuário" android:inputType="textEmailAddress"/>
+        <EditText android:id="@+id/ely_password" android:layout_width="match_parent" android:layout_height="52dp"
+            android:hint="Senha" android:inputType="textPassword" android:layout_marginTop="10dp"/>
+        <Button android:id="@+id/ely_login" android:layout_width="match_parent" android:layout_height="52dp"
+            android:text="ENTRAR" android:layout_marginTop="18dp"/>
+        <TextView android:id="@+id/ely_status" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textColor="#AEB4C0" android:gravity="center" android:layout_marginTop="12dp"/>
+    </LinearLayout>
+</LinearLayout>
+EOF
+
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/SelectAuthFragment.java")
+s=p.read_text()
+if "button_ely_authentication" not in s:
+    s=s.replace('Button mLocalButton = view.findViewById(R.id.button_local_authentication);',
+                'Button mLocalButton = view.findViewById(R.id.button_local_authentication);\\n        Button mElyButton = view.findViewById(R.id.button_ely_authentication);')
+    s=s.replace('mLocalButton.setOnClickListener(v ->', 
+                'mElyButton.setOnClickListener(v -> Tools.swapFragment(requireActivity(), ElyLoginFragment.class, ElyLoginFragment.TAG, null));\\n        mLocalButton.setOnClickListener(v ->')
+    s=s.replace('import net.kdt.pojavlaunch.R;', 'import net.kdt.pojavlaunch.R;')
+    p.write_text(s)
+PY
+
+cat > "$ROOT/java/net/kdt/pojavlaunch/fragments/ElyLoginFragment.java" <<'EOF'
+package net.kdt.pojavlaunch.fragments;
+
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import net.kdt.pojavlaunch.R;
+import net.kdt.pojavlaunch.Tools;
+import net.kdt.pojavlaunch.value.MinecraftAccount;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
+import org.json.JSONObject;
+
+public class ElyLoginFragment extends Fragment {
+    public static final String TAG = "ELY_LOGIN_FRAGMENT";
+    public ElyLoginFragment(){ super(R.layout.fragment_ely_login); }
+
+    @Override public void onViewCreated(@NonNull View view, @Nullable Bundle state) {
+        EditText user=view.findViewById(R.id.ely_username);
+        EditText pass=view.findViewById(R.id.ely_password);
+        Button login=view.findViewById(R.id.ely_login);
+        TextView status=view.findViewById(R.id.ely_status);
+
+        login.setOnClickListener(v -> {
+            String username=user.getText().toString().trim();
+            String password=pass.getText().toString();
+            if(username.isEmpty() || password.isEmpty()){ status.setText("Preencha usuário e senha."); return; }
+            login.setEnabled(false); status.setText("Entrando na Ely.by...");
+            new Thread(() -> {
+                try {
+                    String clientToken=UUID.randomUUID().toString();
+                    JSONObject req=new JSONObject();
+                    req.put("username",username); req.put("password",password);
+                    req.put("clientToken",clientToken); req.put("requestUser",true);
+                    HttpURLConnection c=(HttpURLConnection)new URL("https://authserver.ely.by/auth/authenticate").openConnection();
+                    c.setRequestMethod("POST"); c.setConnectTimeout(15000); c.setReadTimeout(20000);
+                    c.setDoOutput(true); c.setRequestProperty("Content-Type","application/json; charset=UTF-8");
+                    try(OutputStream out=c.getOutputStream()){ out.write(req.toString().getBytes(StandardCharsets.UTF_8)); }
+                    InputStream in=c.getResponseCode() >= 400 ? c.getErrorStream() : c.getInputStream();
+                    String body=new String(in.readAllBytes(),StandardCharsets.UTF_8);
+                    if(c.getResponseCode() >= 400) throw new IOException(new JSONObject(body).optString("errorMessage","Falha na autenticação Ely.by"));
+                    JSONObject json=new JSONObject(body);
+                    JSONObject profile=json.getJSONObject("selectedProfile");
+                    MinecraftAccount account=new MinecraftAccount();
+                    account.username=profile.getString("name");
+                    account.profileId=profile.getString("id");
+                    account.accessToken=json.getString("accessToken");
+                    account.clientToken=json.optString("clientToken",clientToken);
+                    account.isMicrosoft=false;
+                    account.msaRefreshToken="0";
+                    account.expiresAt=System.currentTimeMillis()+24L*60L*60L*1000L;
+                    account.save();
+                    requireActivity().runOnUiThread(() -> {
+                        status.setText("Conta Ely.by adicionada.");
+                        Tools.backToMainMenu(requireActivity());
+                    });
+                } catch(Exception e) {
+                    requireActivity().runOnUiThread(() -> { login.setEnabled(true); status.setText("Erro: "+e.getMessage()); });
+                }
+            }).start();
+        });
+    }
+}
+EOF
+
 # Real FPS Booster settings.
 mkdir -p "$RES/xml"
 cat > "$RES/xml/pref_fps_booster.xml" <<'EOF'
