@@ -3383,7 +3383,6 @@ public class MikaelCrashResolverFragment extends Fragment {
     }
 }
 EOF
-EOF
 
 cat > "$RES/layout/fragment_mikael_crash_resolver.xml" <<'EOF'
 <?xml version="1.0" encoding="utf-8"?>
