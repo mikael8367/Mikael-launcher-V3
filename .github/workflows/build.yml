@@ -1,4 +1,5 @@
 name: Build Mikael Launcher APK
+# Fixed patch paths/XML; rebuild
 
 on:
   push:
