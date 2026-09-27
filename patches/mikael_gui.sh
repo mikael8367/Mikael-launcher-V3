@@ -5,7 +5,8 @@ RES=$ROOT/res
 JAVA=$ROOT/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java
 mkdir -p "$RES/drawable"
 # Remove upstream Amethyst/Pojav visual assets so Mikael Launcher uses only Mikael branding.
-# Keep resources referenced by upstream layouts; replace their visuals with neutral Mikael-compatible placeholders.
+# Keep resource references while replacing the upstream visual with a neutral Mikael resource.
+rm -f "$RES/drawable/ic_setting_sign_in_background.webp"
 cat > "$RES/drawable/ic_setting_sign_in_background.xml" <<'EOF'
 <shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#111318"/><corners android:radius="16dp"/></shape>
 EOF
