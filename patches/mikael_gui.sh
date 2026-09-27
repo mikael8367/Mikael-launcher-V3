@@ -107,4 +107,53 @@ public class MainMenuFragment extends Fragment {
 }
 EOF
 
+
+# Fully custom Mikael account/header UI (no Amethyst skin/launcher images).
+cat > "$RES/drawable/mikael_button.xml" <<'EOF'
+<shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#20242D"/><corners android:radius="14dp"/><stroke android:width="1dp" android:color="#343A46"/><padding android:left="12dp" android:top="10dp" android:right="12dp" android:bottom="10dp"/></shape>
+EOF
+cat > "$RES/drawable/mikael_topbar.xml" <<'EOF'
+<shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#111318"/><corners android:bottomLeftRadius="18dp" android:bottomRightRadius="18dp"/></shape>
+EOF
+cat > "$RES/drawable/mikael_add.xml" <<'EOF'
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="28dp" android:height="28dp" android:viewportWidth="28" android:viewportHeight="28"><path android:fillColor="#4ADE80" android:pathData="M13,4h2v9h9v2h-9v9h-2v-9H4v-2h9z"/></vector>
+EOF
+cat > "$RES/drawable/ic_mikael_settings.xml" <<'EOF'
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="28dp" android:height="28dp" android:viewportWidth="28" android:viewportHeight="28"><path android:fillColor="#FFFFFF" android:pathData="M3,6h22v2H3zM3,13h22v2H3zM3,20h22v2H3z"/><path android:fillColor="#4ADE80" android:pathData="M8,4h3v6H8zM17,11h3v6h-3zM11,18h3v6h-3z"/></vector>
+EOF
+cat > "$RES/drawable/ic_mikael_home.xml" <<'EOF'
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="28dp" android:height="28dp" android:viewportWidth="28" android:viewportHeight="28"><path android:fillColor="#FFFFFF" android:pathData="M4,13.5L14,5l10,8.5v9a2,2 0,0 1,-2 2h-5v-7h-6v7H6a2,2 0,0 1,-2 -2z"/></vector>
+EOF
+cat > "$RES/drawable/ic_mikael_delete.xml" <<'EOF'
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24"><path android:fillColor="#FF6B6B" android:pathData="M6,7h12l-1,14H7zM9,4h6l1,2H8z"/></vector>
+EOF
+cat > "$RES/layout/item_minecraft_account.xml" <<'EOF'
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="@dimen/_52sdp" android:orientation="horizontal" android:gravity="center_vertical" android:background="#111318">
+<TextView android:id="@+id/account_item" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center_vertical" android:paddingStart="@dimen/_16sdp" android:textColor="#FFFFFF" android:textSize="@dimen/_16ssp" android:maxLines="1" android:ellipsize="end"/>
+<ImageView android:id="@+id/delete_account_button" android:layout_width="@dimen/_44sdp" android:layout_height="match_parent" android:src="@drawable/ic_mikael_delete" android:padding="@dimen/padding_moderate" android:background="?attr/selectableItemBackground"/>
+</LinearLayout>
+EOF
+cat > "$RES/layout/activity_pojav_launcher.xml" <<'EOF'
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#0C0E12">
+<LinearLayout android:id="@+id/mikael_header" android:layout_width="match_parent" android:layout_height="@dimen/_60sdp" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="@dimen/_14sdp" android:paddingEnd="@dimen/_8sdp" android:background="@drawable/mikael_topbar" app:layout_constraintTop_toTopOf="parent">
+<com.kdt.mcgui.mcAccountSpinner android:id="@+id/account_spinner" android:layout_width="0dp" android:layout_height="@dimen/_52sdp" android:layout_weight="1" android:background="@android:color/transparent" android:dropDownWidth="@dimen/_280sdp" android:dropDownVerticalOffset="@dimen/_4sdp"/>
+<ImageButton android:id="@+id/setting_button" android:layout_width="@dimen/_52sdp" android:layout_height="@dimen/_52sdp" android:background="?attr/selectableItemBackgroundBorderless" android:src="@drawable/ic_mikael_settings" android:padding="@dimen/_11sdp" android:contentDescription="Ajustes"/>
+</LinearLayout>
+<androidx.fragment.app.FragmentContainerView android:id="@+id/container_fragment" android:layout_width="match_parent" android:layout_height="0dp" app:layout_constraintTop_toBottomOf="@id/mikael_header" app:layout_constraintBottom_toTopOf="@+id/progress_layout"/>
+<com.kdt.mcgui.ProgressLayout android:id="@+id/progress_layout" android:layout_width="match_parent" android:layout_height="wrap_content" app:layout_constraintBottom_toBottomOf="parent"/>
+</androidx.constraintlayout.widget.ConstraintLayout>
+EOF
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/com/kdt/mcgui/mcAccountSpinner.java")
+s=p.read_text().replace("R.drawable.ic_add", "R.drawable.mikael_add")
+p.write_text(s)
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/LauncherActivity.java")
+s=p.read_text().replace("R.drawable.ic_menu_settings : R.drawable.ic_menu_home", "R.drawable.ic_mikael_settings : R.drawable.ic_mikael_home")
+p.write_text(s)
+p=Path("app_pojavlauncher/src/main/res/layout/fragment_launcher.xml")
+s=p.read_text().replace(' android:drawableEnd="@drawable/spinner_arrow" app:drawableEndSize="@dimen/padding_heavy" app:drawableStartIntegerScaling="true" app:drawableStartSize="@dimen/_34sdp" app:drawableEndPadding="@dimen/_1sdp"','').replace(' android:src="@drawable/ic_edit_profile"','')
+p.write_text(s)
+PY
+
 grep -q '<string name="app_name"' "$RES/values/strings.xml" && sed -i 's#<string name="app_name"[^<]*>[^<]*</string>#<string name="app_name" translatable="false">Mikael Launcher V3</string>#' "$RES/values/strings.xml"
