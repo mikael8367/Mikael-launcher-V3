@@ -2197,3 +2197,27 @@ if old not in s:
 s=s.replace(old,new,1)
 p.write_text(s)
 PY
+
+# FINAL UI CLEANUP: remove News and Community buttons from the main launcher.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/res/layout/fragment_launcher.xml")
+s=p.read_text()
+import re
+for bid in ("news_button","discord_button"):
+    s=re.sub(r'\s*<[^>]*?(?:Button|ImageButton|com\\.kdt\\.mcgui\\.MineButton)[^>]*?android:id="@\+id/'+bid+r'"[^>]*/>', '', s, flags=re.S)
+    s=re.sub(r'\s*<[^>]*?(?:Button|ImageButton|com\\.kdt\\.mcgui\\.MineButton)[^>]*?android:id="@\+id/'+bid+r'"[^>]*>.*?</[^>]+>', '', s, flags=re.S)
+p.write_text(s)
+
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java")
+s=p.read_text()
+# Remove listeners/tint references if present; null checks are harmless but we remove the button declarations too.
+s=re.sub(r'\s*Button news=.*?;(?=\n)', '', s)
+s=s.replace('if(news!=null) news.setOnClickListener(x->{});','')
+s=s.replace('if(discord!=null) discord.setOnClickListener(x->{});','')
+s=s.replace('news.setOnClickListener(x->{});','')
+s=s.replace('discord.setOnClickListener(x->{});','')
+s=s.replace('if(news!=null) news.setBackgroundTintList(android.content.res.ColorStateList.valueOf(accent));','')
+s=s.replace('if(discord!=null) discord.setBackgroundTintList(android.content.res.ColorStateList.valueOf(accent));','')
+p.write_text(s)
+PY
