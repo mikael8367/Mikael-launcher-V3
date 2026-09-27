@@ -50,16 +50,43 @@ public class MikaelModLibraryFragment extends Fragment {
 
     private void searchMods() {
         String q=search.getText().toString().trim();
-        status.setText("Pesquisando mods no CurseForge...");
+        status.setText("Pesquisando mods...");
         new Thread(()->{
             try {
                 String u="https://api.curseforge.com/v1/mods/search?gameId=432&classId=6&pageSize=20";
                 if(!q.isEmpty()) u+="&searchFilter="+URLEncoder.encode(q,"UTF-8");
-                JSONArray data=getJson(u).optJSONArray("data");
+                JSONArray data;
+                try {
+                    data=getJson(u).optJSONArray("data");
+                } catch(Exception curseError) {
+                    // CurseForge requires a valid x-api-key. Fall back to the public Modrinth API.
+                    String mr="https://api.modrinth.com/v2/search?limit=20&facets="+URLEncoder.encode("[[\\"project_type:mod\\"]]", "UTF-8");
+                    if(!q.isEmpty()) mr+="&query="+URLEncoder.encode(q,"UTF-8");
+                    data=new JSONArray();
+                    JSONArray hits=getJsonPublic(mr).optJSONArray("hits");
+                    if(hits!=null) for(int i=0;i<hits.length();i++){
+                        JSONObject h=hits.getJSONObject(i);
+                        String id=h.optString("project_id");
+                        String title=h.optString("title","Mod");
+                        String desc=h.optString("description","");
+                        JSONObject item=new JSONObject();
+                        item.put("id","mr:"+id);
+                        item.put("name",title);
+                        item.put("summary",desc);
+                        item.put("fileId",h.optString("latest_version",""));
+                        item.put("fileName","Modrinth");
+                        data.put(item);
+                    }
+                }
                 List<ModItem> found=new ArrayList<>();
-                if(data!=null) for(int i=0;i<data.length();i++){
-                    JSONObject m=data.getJSONObject(i), f=m.optJSONArray("latestFiles")!=null?m.getJSONArray("latestFiles").optJSONObject(0):null;
-                    if(f!=null) found.add(new ModItem(m.optString("id"),m.optString("name","Mod"),m.optString("summary",""),f.optString("id"),f.optString("displayName",f.optString("fileName","Arquivo"))));
+                for(int i=0;i<data.length();i++){
+                    JSONObject m=data.getJSONObject(i);
+                    if(m.optString("id").startsWith("mr:")){
+                        found.add(new ModItem(m.optString("id"),m.optString("name","Mod"),m.optString("summary",""),m.optString("fileId"),m.optString("fileName","Modrinth")));
+                    } else {
+                        JSONObject f=m.optJSONArray("latestFiles")!=null?m.getJSONArray("latestFiles").optJSONObject(0):null;
+                        if(f!=null) found.add(new ModItem(m.optString("id"),m.optString("name","Mod"),m.optString("summary",""),f.optString("id"),f.optString("displayName",f.optString("fileName","Arquivo"))));
+                    }
                 }
                 android.app.Activity a=getActivity(); if(a==null)return; a.runOnUiThread(()->{
                     mods.clear(); mods.addAll(found); adapter.clear();
@@ -80,8 +107,15 @@ public class MikaelModLibraryFragment extends Fragment {
         status.setText("Baixando "+m.name+"...");
         new Thread(()->{
             try {
-                String url=getJson("https://api.curseforge.com/v1/mods/"+m.modId+"/files/"+m.fileId+"/download-url").optString("data","");
-                if(url.isEmpty()) throw new Exception("CurseForge não forneceu o link.");
+                String url;
+                if(m.modId.startsWith("mr:")){
+                    JSONObject v=getJsonPublic("https://api.modrinth.com/v2/version/"+URLEncoder.encode(m.fileId,"UTF-8"));
+                    JSONArray fs=v.optJSONArray("files");
+                    url=fs!=null&&fs.length()>0?fs.getJSONObject(0).optString("url",""):"";
+                } else {
+                    url=getJson("https://api.curseforge.com/v1/mods/"+m.modId+"/files/"+m.fileId+"/download-url").optString("data","");
+                }
+                if(url.isEmpty()) throw new Exception("Download indisponível.");
                 File dir=getCurrentProfileDirectory(), modsDir=new File(dir,"mods");
                 if(!modsDir.exists()&&!modsDir.mkdirs()) throw new Exception("Não foi possível criar a pasta mods.");
                 File out=new File(modsDir,m.fileName.replaceAll("[\\\\/:*?\"<>|]","_"));
@@ -93,6 +127,18 @@ public class MikaelModLibraryFragment extends Fragment {
                 requireActivity().runOnUiThread(()->status.setText("Instalado em mods/: "+out.getName()));
             }catch(Exception e){android.app.Activity a=getActivity(); if(a!=null)a.runOnUiThread(()->status.setText("Falha: "+e.getMessage()));}
         }).start();
+    }
+
+    private JSONObject getJsonPublic(String u)throws Exception{
+        HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();
+        c.setRequestMethod("GET"); c.setConnectTimeout(15000); c.setReadTimeout(20000);
+        c.setRequestProperty("Accept","application/json");
+        c.setRequestProperty("User-Agent","MikaelLauncherV3/1.0 (Android)");
+        int code=c.getResponseCode(); InputStream in=code>=400?c.getErrorStream():c.getInputStream();
+        java.io.ByteArrayOutputStream o=new java.io.ByteArrayOutputStream(); byte[] b=new byte[8192]; int n;
+        while((n=in.read(b))!=-1)o.write(b,0,n);
+        if(code>=400)throw new Exception("HTTP "+code);
+        return new JSONObject(o.toString("UTF-8"));
     }
 
     private JSONObject getJson(String u)throws Exception{
