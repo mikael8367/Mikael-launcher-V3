@@ -29,6 +29,12 @@
             app2:seekBarIncrement="@integer/memory_seekbar_increment"
             app2:selectable="false"/>
 
+        <Preference
+            android:key="mikael_ram_available"
+            android:persistent="false"
+            android:title="RAM disponível"
+            android:summary="Calculando..." />
+
         <SwitchPreference
             android:defaultValue="false"
             android:key="disable_autojre_select"
