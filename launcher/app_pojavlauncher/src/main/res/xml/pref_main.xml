@@ -11,7 +11,9 @@
 
     <PreferenceCategory
         android:title="@string/preference_category_main_categories"
-        >\n\n        <Preference
+        >
+
+        <Preference
             android:key="mikael_fps_booster"
             android:title="FPS Booster"
             android:summary="Otimização de desempenho para Minecraft"
