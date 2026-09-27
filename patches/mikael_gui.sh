@@ -2221,3 +2221,390 @@ s=s.replace('if(news!=null) news.setBackgroundTintList(android.content.res.Color
 s=s.replace('if(discord!=null) discord.setBackgroundTintList(android.content.res.ColorStateList.valueOf(accent));','')
 p.write_text(s)
 PY
+
+# Advanced Crash Checker: collect recent logs/crash reports, score known failure signatures,
+# identify likely root causes, show evidence, and provide concrete recovery steps.
+cat > "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelCrashCheckerFragment.java" <<'EOF'
+package net.kdt.pojavlaunch.fragments;
+
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import android.widget.TextView;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import net.kdt.pojavlaunch.R;
+import net.kdt.pojavlaunch.Tools;
+import net.kdt.pojavlaunch.prefs.LauncherPreferences;
+import net.kdt.pojavlaunch.value.launcherprofiles.LauncherProfiles;
+import net.kdt.pojavlaunch.value.launcherprofiles.MinecraftProfile;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class MikaelCrashCheckerFragment extends Fragment {
+    public static final String TAG = "MIKAEL_CRASH_CHECKER";
+
+    private TextView status;
+    private TextView result;
+    private Button analyze;
+    private String currentReport = "";
+
+    private static final class Finding {
+        String id, title, cause, fix;
+        int score, priority;
+        final List<String> evidence = new ArrayList<>();
+        Finding(String id, String title, String cause, String fix, int score, int priority) {
+            this.id=id; this.title=title; this.cause=cause; this.fix=fix; this.score=score; this.priority=priority;
+        }
+    }
+
+    public MikaelCrashCheckerFragment() {
+        super(R.layout.fragment_mikael_crash_checker);
+    }
+
+    @Override public void onViewCreated(@NonNull View v, @Nullable Bundle b) {
+        status=v.findViewById(R.id.crash_status);
+        result=v.findViewById(R.id.crash_result);
+        analyze=v.findViewById(R.id.crash_analyze);
+        Button back=v.findViewById(R.id.crash_back);
+        analyze.setOnClickListener(x->runAnalysis());
+        back.setOnClickListener(x->Tools.swapFragment(requireActivity(),MainMenuFragment.class,MainMenuFragment.TAG,null));
+        runAnalysis();
+    }
+
+    private void runAnalysis() {
+        status.setText("Analisando logs, crash-reports e configuração...");
+        result.setText("Aguarde...");
+        analyze.setEnabled(false);
+        new Thread(()->{
+            try {
+                Analysis a=analyzeCrash();
+                android.app.Activity activity=getActivity();
+                if(activity!=null) activity.runOnUiThread(()->{
+                    if(!isAdded()) return;
+                    currentReport=a.report;
+                    status.setText(a.summary);
+                    result.setText(a.report);
+                    analyze.setEnabled(true);
+                });
+            } catch(Exception e) {
+                android.app.Activity activity=getActivity();
+                if(activity!=null) activity.runOnUiThread(()->{
+                    if(!isAdded()) return;
+                    status.setText("Falha no analisador");
+                    result.setText("Não foi possível analisar os arquivos.\n\nErro técnico: "+e.getMessage());
+                    analyze.setEnabled(true);
+                });
+            }
+        }).start();
+    }
+
+    private Analysis analyzeCrash() throws Exception {
+        File dir=getCurrentProfileDirectory();
+        List<File> candidates=new ArrayList<>();
+        File latest=new File(dir,"latestlog.txt");
+        if(latest.exists()) candidates.add(latest);
+        File crashDir=new File(dir,"crash-reports");
+        collectFiles(crashDir,candidates,4);
+        File gameLog=new File(dir,"logs/latest.log");
+        if(gameLog.exists()) candidates.add(gameLog);
+        Collections.sort(candidates,Comparator.comparingLong(File::lastModified).reversed());
+
+        if(candidates.isEmpty()) {
+            return new Analysis("Nenhum log encontrado",
+                    "Não encontrei latestlog.txt, logs/latest.log nem arquivos recentes em crash-reports.\n\n"+
+                    "Como resolver:\n1. Inicie o Minecraft até o crash acontecer.\n2. Volte imediatamente ao launcher.\n3. Abra VERIFICAR CRASH novamente.");
+        }
+
+        File primary=candidates.get(0);
+        String text=readTail(primary,220000);
+        if(text.trim().isEmpty()) {
+            return new Analysis("Log vazio",
+                    "O arquivo mais recente está vazio: "+primary.getName()+"\n\nTente executar o jogo novamente e analisar logo após o crash.");
+        }
+
+        String lower=text.toLowerCase(Locale.ROOT);
+        List<Finding> findings=detect(text,lower);
+        Collections.sort(findings,(a,b)->{
+            int c=Integer.compare(b.score,a.score);
+            return c!=0?c:Integer.compare(a.priority,b.priority);
+        });
+
+        String mc=extractMinecraftVersion(text);
+        String java=extractJavaVersion(text);
+        String top=extractLastMeaningfulError(text);
+        int confidence=findings.isEmpty()?20:Math.min(99,50+findings.get(0).score*5);
+        StringBuilder out=new StringBuilder();
+        out.append("ARQUIVO ANALISADO\n").append(primary.getAbsolutePath()).append("\n");
+        out.append("Data: ").append(new java.util.Date(primary.lastModified())).append("\n");
+        if(mc!=null) out.append("Minecraft detectado: ").append(mc).append("\n");
+        if(java!=null) out.append("Java detectado: ").append(java).append("\n");
+        out.append("Confiança da análise: ").append(confidence).append("%\n\n");
+
+        if(top!=null) out.append("ÚLTIMO ERRO RELEVANTE\n").append(top).append("\n\n");
+
+        if(findings.isEmpty()) {
+            out.append("CAUSA NÃO DETERMINADA\n");
+            out.append("Não encontrei uma assinatura forte o suficiente para afirmar a causa.\n\n");
+            out.append("Próximos passos:\n- envie o trecho final de latestlog.txt/crash-report;\n");
+            out.append("- verifique se o problema ocorre sem mods;\n");
+            out.append("- confirme a versão do Java exigida pela versão do Minecraft.\n");
+        } else {
+            Finding f=findings.get(0);
+            out.append("CAUSA MAIS PROVÁVEL\n").append(f.title).append("\n");
+            out.append("O que aconteceu:\n").append(f.cause).append("\n\n");
+            out.append("COMO RESOLVER\n").append(f.fix).append("\n\n");
+            out.append("EVIDÊNCIAS ENCONTRADAS\n");
+            for(String e:f.evidence) out.append("• ").append(e).append("\n");
+            if(findings.size()>1) {
+                out.append("\nOUTRAS POSSIBILIDADES\n");
+                int count=Math.min(3,findings.size());
+                for(int i=1;i<count;i++) out.append((i+1)).append(". ").append(findings.get(i).title)
+                        .append(" (pontuação ").append(findings.get(i).score).append(")\n");
+            }
+        }
+        out.append("\nARQUIVOS VERIFICADOS: ").append(candidates.size());
+        if(candidates.size()>1) {
+            out.append("\nMais recente: ").append(candidates.get(0).getName());
+            for(int i=1;i<Math.min(candidates.size(),5);i++) out.append("\n").append(i+1).append(". ").append(candidates.get(i).getName());
+        }
+        out.append("\n\nHeurísticas: Java, RAM, mods, dependências, Fabric/Forge, OptiFine, LWJGL/GLFW, OpenGL/Zink, autenticação, rede, bibliotecas, permissões, arquivo corrompido e crashes nativos.");
+        return new Analysis(findings.isEmpty()?"Análise concluída":"Diagnóstico: "+findings.get(0).title,out.toString());
+    }
+
+    private List<Finding> detect(String text,String l) {
+        List<Finding> fs=new ArrayList<>();
+        add(fs,"oom","Memória insuficiente / OutOfMemory",
+                "O processo do Minecraft/JVM ficou sem memória suficiente para concluir a operação.",
+                "Reduza a RAM alocada para deixar memória para o Android, desative shaders pesados e feche apps em segundo plano. Para mods grandes, aumente a RAM alocada somente se o aparelho tiver RAM livre.",
+                new String[]{"outofmemoryerror","java heap space","gc overhead limit exceeded","unable to create native thread"},12,1,text,l);
+
+        add(fs,"java","Versão do Java incompatível",
+                "O Minecraft ou um mod tentou carregar classes compiladas para uma versão de Java diferente da runtime usada.",
+                "Em Ajustes > Java > Runtimes, instale a versão Java exigida pela versão do Minecraft e selecione essa runtime para o perfil. Java 8 é comum em versões antigas; versões modernas usam runtimes mais novas.",
+                new String[]{"unsupportedclassversionerror","class file version","could not create the java virtual machine","unsupported major.minor version"},11,2,text,l);
+
+        add(fs,"missing_mod","Mod/biblioteca ausente",
+                "Alguma classe necessária não foi encontrada. Normalmente isso significa que um mod ou uma dependência obrigatória não foi instalado.",
+                "Remova o mod citado no erro ou instale a dependência/loader indicado. Na Biblioteca de Mods, use a versão compatível com o Minecraft selecionado.",
+                new String[]{"modresolutionexception","modresolution","mod '","could not find required mod","depends on","requires"},8,4,text,l);
+
+        add(fs,"mixin","Falha de Mixin / mod incompatível",
+                "Um mod tentou aplicar uma transformação de bytecode que não corresponde à versão atual do Minecraft/loader ou de outro mod.",
+                "Atualize o mod para a mesma versão do Minecraft, teste sem o mod citado no stacktrace e confira conflitos entre mods que alteram a mesma classe.",
+                new String[]{"mixinapplyerror","mixin","invalid injection","injectionpoint","callback method"},8,5,text,l);
+
+        add(fs,"forge","Forge/modloader incompatível",
+                "O loader encontrou uma configuração, versão ou mod que não combina com a versão do Forge.",
+                "Use a versão do Forge compatível com o Minecraft e confirme as dependências. Evite misturar versões de mods destinadas a outro loader.",
+                new String[]{"fmlcommon","modlauncher","net.minecraftforge","fml loading error","forge"},6,7,text,l);
+
+        add(fs,"fabric","Fabric incompatível",
+                "O Fabric Loader encontrou incompatibilidade entre mods, loader ou versão do Minecraft.",
+                "Atualize Fabric Loader e Fabric API para a mesma linha de Minecraft do perfil. Remova temporariamente o último mod adicionado para localizar o conflito.",
+                new String[]{"fabric loader","fabricloader","net.fabricmc","fabric api"},6,6,text,l);
+
+        add(fs,"optifine","Conflito envolvendo OptiFine",
+                "Há sinais de erro em OptiFine, renderização ou integração com outro mod/loader.",
+                "Use uma versão estável do OptiFine compatível com o Minecraft. Não misture OptiFine com mods de renderização incompatíveis e teste sem shaders.",
+                new String[]{"optifine","opengl error","shader","glfw"},5,8,text,l);
+
+        add(fs,"lwjgl","Falha nativa LWJGL/GLFW",
+                "Uma biblioteca gráfica/nativa não conseguiu inicializar corretamente no Android.",
+                "Teste outro renderer compatível, desative opções gráficas experimentais e confira se a versão do Minecraft/mod não exige uma biblioteca nativa incompatível. Reinicie o launcher após trocar runtime/renderer.",
+                new String[]{"lwjgl","glfw error","liblwjgl","unsatisfiedlinkerror","native library"},7,3,text,l);
+
+        add(fs,"gpu","Problema de GPU / OpenGL / Vulkan / Zink",
+                "O jogo falhou ao inicializar a camada gráfica ou um shader/driver.",
+                "Desative shaders, teste a superfície/renderizador alternativo e, em aparelhos compatíveis, teste Zink. Se só uma versão do Minecraft falha, compare com uma versão vanilla.",
+                new String[]{"opengl","egl_bad","egl error","vulkan","zink","glout","shader compilation"},6,9,text,l);
+
+        add(fs,"auth","Falha de autenticação",
+                "O jogo/launcher não conseguiu autenticar a sessão ou obter os dados necessários para entrar no servidor.",
+                "Confirme a conta e a sessão, verifique a conexão e refaça o login. Para contas Ely.by, confirme que o perfil e a integração exigida pelo servidor estão configurados.",
+                new String[]{"invalid session","authenticationservers","authlib","access token","failed to verify username","ely.by"},5,10,text,l);
+
+        add(fs,"network","Falha de rede/download",
+                "O crash/erro ocorreu durante acesso a recursos remotos, bibliotecas ou servidores.",
+                "Verifique internet, DNS e estabilidade da conexão. Tente novamente; se o erro mencionar um domínio específico, ele pode estar indisponível ou bloqueado.",
+                new String[]{"timeout","unknownhostexception","connectexception","connection reset","failed to download","http 403","http 404","sslhandshakeexception"},5,11,text,l);
+
+        add(fs,"library","Biblioteca/JAR corrompido ou incompatível",
+                "Uma biblioteca foi encontrada, mas não pôde ser carregada corretamente.",
+                "Rebaixe a biblioteca/mod afetado. Em caso de erro persistente, remova somente o arquivo indicado e execute novamente para forçar um novo download.",
+                new String[]{"zipexception","jarfile","invalid or corrupt jarfile","noclassdeffounderror","linkageerror"},7,12,text,l);
+
+        add(fs,"permission","Armazenamento/permissão",
+                "O processo não conseguiu ler ou gravar arquivos necessários.",
+                "Confira as permissões do aplicativo e espaço livre. Evite mover manualmente a pasta do jogo durante o download/execução.",
+                new String[]{"permission denied","eacces","read-only file system","nosuchfileexception","failed to open"},4,13,text,l);
+
+        add(fs,"native","Crash nativo (SIGSEGV/SIGABRT)",
+                "Uma biblioteca nativa terminou o processo. Isso geralmente aponta para renderer, LWJGL ou incompatibilidade nativa.",
+                "Teste renderer alternativo, desative shaders e mods gráficos e compare com uma instalação vanilla. Se apenas uma runtime apresenta o crash, teste outra runtime compatível.",
+                new String[]{"sigsegv","sigabrt","fatal signal 11","fatal signal 6","native crash"},10,0,text,l);
+
+        add(fs,"class","Classe/método incompatível entre mods",
+                "Um mod foi compilado para uma API diferente da disponível no conjunto atual.",
+                "Atualize ou substitua o mod citado e mantenha todos os mods na mesma versão de Minecraft/loader. Procure primeiro o primeiro nome de mod antes do stacktrace do Minecraft.",
+                new String[]{"noclassdeffounderror","classnotfoundexception","nosuchmethoderror","nosuchfielderror"},7,14,text,l);
+
+        add(fs,"disk","Espaço em disco insuficiente",
+                "O launcher/JVM não conseguiu concluir uma gravação porque o armazenamento ficou sem espaço.",
+                "Libere espaço no armazenamento interno e tente novamente. Evite manter várias cópias de runtimes, mods e logs desnecessários.",
+                new String[]{"no space left on device","disk full","enospc"},8,15,text,l);
+
+        // Increase confidence when multiple independent signatures agree.
+        Set<String> tokens=new HashSet<>();
+        Matcher m=Pattern.compile("(?i)([a-z0-9_$.]+(?:mod|fabric|forge|optifine|sodium)[a-z0-9_$.\-]*)").matcher(text);
+        while(m.find() && tokens.size()<16) tokens.add(m.group(1));
+        for(Finding f:fs) if(f.score>0 && !tokens.isEmpty() && f.id.equals("missing_mod")) f.score++;
+        return fs;
+    }
+
+    private void add(List<Finding> fs,String id,String title,String cause,String fix,String[] sig,int base,int priority,String text,String lower) {
+        Finding f=new Finding(id,title,cause,fix,0,priority);
+        for(String s:sig) if(lower.contains(s)) {
+            f.score+=base;
+            if(f.evidence.size()<5) {
+                int idx=lower.indexOf(s);
+                String raw=text.substring(Math.max(0,idx-110),Math.min(text.length(),idx+s.length()+180)).replace('\n',' ');
+                raw=raw.replaceAll("\\s+"," ").trim();
+                f.evidence.add(raw);
+            }
+        }
+        if(f.score>0) fs.add(f);
+    }
+
+    private String extractLastMeaningfulError(String t) {
+        String[] pats={"OutOfMemoryError","UnsupportedClassVersionError","NoClassDefFoundError","ClassNotFoundException",
+                "NoSuchMethodError","MixinApplyError","ModLoadingException","java.lang.","FATAL","ERROR","Caused by:"};
+        String[] lines=t.split("\\R");
+        for(int i=lines.length-1;i>=0;i--) {
+            String line=lines[i].trim();
+            if(line.length()<8 || line.length()>500) continue;
+            for(String p:pats) if(line.toLowerCase(Locale.ROOT).contains(p.toLowerCase(Locale.ROOT)))
+                return line;
+        }
+        return null;
+    }
+
+    private String extractMinecraftVersion(String t) {
+        Matcher m=Pattern.compile("(?i)(?:minecraft|version)[^0-9]{0,30}(\\d+\\.\\d+(?:\\.\\d+)?)").matcher(t);
+        String v=null; while(m.find()) v=m.group(1);
+        return v;
+    }
+
+    private String extractJavaVersion(String t) {
+        Matcher m=Pattern.compile("(?i)(?:java|runtime)[^0-9]{0,20}(1\\.\\d+|\\d+)(?:[._-]\\d+)*").matcher(t);
+        return m.find()?m.group(1):null;
+    }
+
+    private void collectFiles(File dir,List<File> out,int depth) {
+        if(dir==null||!dir.exists()||depth<0)return;
+        File[] files=dir.listFiles();
+        if(files==null)return;
+        for(File f:files) {
+            if(f.isDirectory()) { collectFiles(f,out,depth-1); }
+            else if(f.getName().toLowerCase(Locale.ROOT).endsWith(".txt") || f.getName().toLowerCase(Locale.ROOT).endsWith(".log")) out.add(f);
+        }
+    }
+
+    private String readTail(File f,int maxChars) throws Exception {
+        long skip=Math.max(0,f.length()-maxChars);
+        try(FileInputStream in=new FileInputStream(f)) {
+            if(skip>0) in.skip(skip);
+            BufferedReader br=new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+            StringBuilder b=new StringBuilder();
+            char[] c=new char[8192]; int n;
+            while((n=br.read(c))!=-1) b.append(c,0,n);
+            return b.toString();
+        }
+    }
+
+    private File getCurrentProfileDirectory() {
+        String cur=LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE,null);
+        if(cur==null||cur.trim().isEmpty()) return new File(Tools.DIR_GAME_NEW);
+        try {
+            LauncherProfiles.load();
+            MinecraftProfile p=LauncherProfiles.mainProfileJson.profiles.get(cur);
+            return p==null?new File(Tools.DIR_GAME_NEW):Tools.getGameDirPath(p);
+        } catch(Exception e) { return new File(Tools.DIR_GAME_NEW); }
+    }
+
+    private static final class Analysis {
+        final String summary, report;
+        Analysis(String s,String r){summary=s;report=r;}
+    }
+}
+EOF
+
+cat > "$RES/layout/fragment_mikael_crash_checker.xml" <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="#0C0E12" android:padding="16dp">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="VERIFICAR CRASH" android:textColor="#FFFFFF" android:textSize="25sp" android:textStyle="bold"/>
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="5dp" android:text="Analisa automaticamente logs, crash-reports, Java, RAM, mods, loaders e gráficos."
+        android:textColor="#9AA4B2" android:textSize="13sp"/>
+    <TextView android:id="@+id/crash_status" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="14dp" android:text="Preparando..." android:textColor="#4ADE80"
+        android:textStyle="bold"/>
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:layout_marginTop="10dp" android:fillViewport="true">
+        <TextView android:id="@+id/crash_result" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textColor="#E8EDF3" android:textSize="13sp" android:lineSpacingExtra="3dp"/>
+    </ScrollView>
+    <Button android:id="@+id/crash_analyze" android:layout_width="match_parent" android:layout_height="48dp"
+        android:text="ANALISAR NOVAMENTE" android:textStyle="bold" android:background="@drawable/mikael_button"/>
+    <Button android:id="@+id/crash_back" android:layout_width="match_parent" android:layout_height="48dp"
+        android:layout_marginTop="8dp" android:text="VOLTAR" android:background="@drawable/mikael_button"/>
+</LinearLayout>
+EOF
+
+# Add the crash checker button to the main launcher content area.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/res/layout/fragment_launcher.xml")
+s=p.read_text()
+if "crash_checker_button" not in s:
+    marker='''<com.kdt.mcgui.LauncherMenuButton android:id="@+id/install_jar_button"'''
+    pos=s.find(marker)
+    end=s.find('/>',pos)
+    if pos>=0 and end>=0:
+        btn='''<com.kdt.mcgui.LauncherMenuButton android:id="@+id/crash_checker_button" style="@style/LauncherMenuButton.Universal" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/_7sdp" android:text="VERIFICAR CRASH" android:textSize="@dimen/_11ssp" android:textStyle="bold" android:background="@drawable/mikael_button"/>'''
+        s=s[:end+2]+"\n"+btn+s[end+2:]
+p.write_text(s)
+PY
+
+# Wire the crash checker button after all earlier MainMenu rewrites.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java")
+s=p.read_text()
+needle='Button modLibrary=v.findViewById(R.id.mod_library_button),contentLibrary=v.findViewById(R.id.content_library_button),forgeOptiFine=v.findViewById(R.id.forge_optifine_button);'
+if "crash_checker_button" in open("app_pojavlauncher/src/main/res/layout/fragment_launcher.xml").read() and "MikaelCrashCheckerFragment.class" not in s:
+    if needle not in s: raise SystemExit("MainMenu button declaration marker not found")
+    s=s.replace(needle,needle+'\n   Button crashChecker=v.findViewById(R.id.crash_checker_button);',1)
+    anchor='''if(forgeOptiFine!=null) forgeOptiFine.setOnClickListener(x->swapFragment(requireActivity(),MikaelForgeOptiFineFragment.class,MikaelForgeOptiFineFragment.TAG,null));'''
+    if anchor not in s: raise SystemExit("MainMenu Forge listener marker not found")
+    s=s.replace(anchor,anchor+'\n   if(crashChecker!=null) crashChecker.setOnClickListener(x->swapFragment(requireActivity(),MikaelCrashCheckerFragment.class,MikaelCrashCheckerFragment.TAG,null));',1)
+p.write_text(s)
+PY
