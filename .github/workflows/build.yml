@@ -17,6 +17,7 @@ jobs:
 
       - name: Prepare launcher
         run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
           git clone --recursive --depth 1 https://github.com/AngelAuraMC/Amethyst-Android.git launcher
 
       - name: Build APK
