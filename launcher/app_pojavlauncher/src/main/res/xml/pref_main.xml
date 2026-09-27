@@ -84,7 +84,66 @@
 
 
 
-\n    <PreferenceCategory android:title="MIKAEL ADVANCED">\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="sustainedPerformance"\n            android:title="Desempenho sustentado"\n            android:summary="Mantém o desempenho alto durante o jogo"\n            android:defaultValue="false" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="force_vsync"\n            android:title="VSync"\n            android:summary="Sincroniza os frames com a tela"\n            android:defaultValue="false" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="alternate_surface"\n            android:title="Superfície alternativa"\n            android:summary="Usa o caminho alternativo de renderização"\n            android:defaultValue="true" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="bigCoreAffinity"\n            android:title="Priorizar núcleos rápidos"\n            android:summary="Prioriza os núcleos de maior desempenho"\n            android:defaultValue="false" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="zinkPreferSystemDriver"\n            android:title="Driver Zink do sistema"\n            android:summary="Prefere o driver gráfico Zink fornecido pelo sistema"\n            android:defaultValue="false" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="enableGyro"\n            android:title="Controles por giroscópio"\n            android:summary="Permite usar o movimento do aparelho nos controles"\n            android:defaultValue="false" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="always_grab_mouse"\n            android:title="Captura permanente do mouse"\n            android:summary="Mantém o mouse capturado durante a sessão"\n            android:defaultValue="false" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="keyboardPanning"\n            android:title="Mover tela com teclado"\n            android:summary="Ajusta a tela quando o teclado virtual aparece"\n            android:defaultValue="true" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="checkLibraries"\n            android:title="Verificar bibliotecas"\n            android:summary="Confere a integridade das bibliotecas baixadas"\n            android:defaultValue="true" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="dump_shaders"\n            android:title="Diagnóstico de shaders"\n            android:summary="Salva informações de shaders para depuração"\n            android:defaultValue="false" />\n        <androidx.preference.SeekBarPreference\n            android:key="resolutionRatio"\n            android:title="Escala de resolução"\n            android:summary="Reduz a resolução interna para aumentar o desempenho"\n            android:min="50" android:max="100" android:defaultValue="100"\n            app:showSeekBarValue="true" />\n    </PreferenceCategory>\n\n
+
+    <PreferenceCategory android:title="MIKAEL ADVANCED">
+        <androidx.preference.SwitchPreferenceCompat
+            android:key="sustainedPerformance"
+            android:title="Desempenho sustentado"
+            android:summary="Mantém o desempenho alto durante o jogo"
+            android:defaultValue="false" />
+        <androidx.preference.SwitchPreferenceCompat
+            android:key="force_vsync"
+            android:title="VSync"
+            android:summary="Sincroniza os frames com a tela"
+            android:defaultValue="false" />
+        <androidx.preference.SwitchPreferenceCompat
+            android:key="alternate_surface"
+            android:title="Superfície alternativa"
+            android:summary="Usa o caminho alternativo de renderização"
+            android:defaultValue="true" />
+        <androidx.preference.SwitchPreferenceCompat
+            android:key="bigCoreAffinity"
+            android:title="Priorizar núcleos rápidos"
+            android:summary="Prioriza os núcleos de maior desempenho"
+            android:defaultValue="false" />
+        <androidx.preference.SwitchPreferenceCompat
+            android:key="zinkPreferSystemDriver"
+            android:title="Driver Zink do sistema"
+            android:summary="Prefere o driver gráfico Zink fornecido pelo sistema"
+            android:defaultValue="false" />
+        <androidx.preference.SwitchPreferenceCompat
+            android:key="enableGyro"
+            android:title="Controles por giroscópio"
+            android:summary="Permite usar o movimento do aparelho nos controles"
+            android:defaultValue="false" />
+        <androidx.preference.SwitchPreferenceCompat
+            android:key="always_grab_mouse"
+            android:title="Captura permanente do mouse"
+            android:summary="Mantém o mouse capturado durante a sessão"
+            android:defaultValue="false" />
+        <androidx.preference.SwitchPreferenceCompat
+            android:key="keyboardPanning"
+            android:title="Mover tela com teclado"
+            android:summary="Ajusta a tela quando o teclado virtual aparece"
+            android:defaultValue="true" />
+        <androidx.preference.SwitchPreferenceCompat
+            android:key="checkLibraries"
+            android:title="Verificar bibliotecas"
+            android:summary="Confere a integridade das bibliotecas baixadas"
+            android:defaultValue="true" />
+        <androidx.preference.SwitchPreferenceCompat
+            android:key="dump_shaders"
+            android:title="Diagnóstico de shaders"
+            android:summary="Salva informações de shaders para depuração"
+            android:defaultValue="false" />
+        <androidx.preference.SeekBarPreference
+            android:key="resolutionRatio"
+            android:title="Escala de resolução"
+            android:summary="Reduz a resolução interna para aumentar o desempenho"
+            android:min="50" android:max="100" android:defaultValue="100"
+            app:showSeekBarValue="true" />
+    </PreferenceCategory>
+\n
     <PreferenceCategory android:title="MIKAEL PERSONALIZAÇÃO">
         <ListPreference
             android:key="mikael_accent_color"
