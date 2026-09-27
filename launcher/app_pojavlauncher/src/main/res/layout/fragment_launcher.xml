@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/background_app">
+<VideoView android:id="@+id/mikael_video_background" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone" />
+<View android:layout_width="match_parent" android:layout_height="match_parent" android:background="#99000000" />
+<ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:fillViewport="true" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toTopOf="@id/mikael_bottom">
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:gravity="center_horizontal" android:paddingHorizontal="@dimen/_16sdp" android:paddingTop="@dimen/_16sdp" android:paddingBottom="@dimen/_10sdp">
+<ImageView android:layout_width="@dimen/_88sdp" android:layout_height="@dimen/_88sdp" android:src="@drawable/mikael_logo" android:contentDescription="Mikael Launcher"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/_6sdp" android:text="MIKAEL LAUNCHER V3" android:textSize="@dimen/_21ssp" android:textStyle="bold" android:textColor="@android:color/white"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Minecraft Java Edition" android:textSize="@dimen/_12ssp" android:alpha="0.72"/>
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/_10sdp" android:padding="@dimen/padding_medium" android:gravity="center" android:text="Versões • Perfis • Controles • Mods" android:textSize="@dimen/_11ssp" android:background="@drawable/background_card"/>
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="@dimen/_8sdp">
+<com.kdt.mcgui.LauncherMenuButton android:id="@+id/custom_control_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="CONTROLES" android:background="@drawable/mikael_button"/>
+<com.kdt.mcgui.LauncherMenuButton android:id="@+id/settings_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="@dimen/_6sdp" android:text="AJUSTES" android:background="@drawable/mikael_button"/>
+</LinearLayout>
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+<com.kdt.mcgui.LauncherMenuButton android:id="@+id/open_files_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="ARQUIVOS" android:background="@drawable/mikael_button"/>
+<com.kdt.mcgui.LauncherMenuButton android:id="@+id/share_logs_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="@dimen/_6sdp" android:text="LOGS" android:background="@drawable/mikael_button"/>
+</LinearLayout>
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+<com.kdt.mcgui.LauncherMenuButton android:id="@+id/news_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="NOTÍCIAS" android:background="@drawable/mikael_button"/>
+<com.kdt.mcgui.LauncherMenuButton android:id="@+id/discord_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="@dimen/_6sdp" android:text="COMUNIDADE" android:background="@drawable/mikael_button"/>
+</LinearLayout>
+<com.kdt.mcgui.LauncherMenuButton android:id="@+id/install_jar_button" style="@style/LauncherMenuButton.Universal" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="INSTALAR MOD / JAR" android:background="@drawable/mikael_button"/>
+<com.kdt.mcgui.LauncherMenuButton android:id="@+id/mod_library_button" style="@style/LauncherMenuButton.Universal" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="BIBLIOTECA DE MODS" android:background="@drawable/mikael_button"/>
+<com.kdt.mcgui.LauncherMenuButton android:id="@+id/content_library_button" style="@style/LauncherMenuButton.Universal" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="TEXTURAS • SHADERS • MUNDOS" android:background="@drawable/mikael_button"/>
+</LinearLayout>
+</ScrollView>
+<LinearLayout android:id="@+id/mikael_bottom" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="@dimen/_12sdp" android:paddingTop="@dimen/_6sdp" android:paddingBottom="@dimen/_9sdp" android:background="@color/background_bottom_bar" app:layout_constraintBottom_toBottomOf="parent">
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+<com.kdt.mcgui.mcVersionSpinner android:id="@+id/mc_version_spinner" android:layout_width="0dp" android:layout_height="@dimen/_50sdp" android:layout_weight="1" android:background="@android:color/transparent"/>
+<ImageButton android:id="@+id/edit_profile_button" android:layout_width="@dimen/_50sdp" android:layout_height="@dimen/_50sdp" android:background="@drawable/mikael_button" android:src="@drawable/ic_mikael_profile" android:contentDescription="Perfil"/>
+</LinearLayout>
+<com.kdt.mcgui.MineButton android:id="@+id/play_button" android:background="@drawable/mikael_play" android:textColor="#0C0E12" android:layout_width="match_parent" android:layout_height="@dimen/_56sdp" android:layout_marginTop="@dimen/_5sdp" android:text="JOGAR" android:textAllCaps="true"/>
+</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

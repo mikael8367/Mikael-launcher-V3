@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app2="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    app:key=""
+    >
+
+    <net.kdt.pojavlaunch.prefs.BackButtonPreference/>
+
+    <PreferenceCategory
+        android:title="@string/preference_category_main_categories"
+        >\n\n        <Preference
+            android:key="mikael_fps_booster"
+            android:title="FPS Booster"
+            android:summary="Otimização de desempenho para Minecraft"
+            android:fragment="net.kdt.pojavlaunch.prefs.screens.MikaelFpsBoosterFragment" />
+
+        
+
+        <Preference
+            android:key="video_screen_setting"
+            android:title="@string/preference_video_title"
+            android:summary="@string/preference_video_description"
+            android:fragment="net.kdt.pojavlaunch.prefs.screens.LauncherPreferenceVideoFragment"
+            android:icon="@drawable/ic_setting_video"
+            />
+
+
+        <Preference
+            android:key="control_screen_setting"
+            android:title="@string/preference_control_title"
+            android:summary="@string/preference_control_description"
+            android:fragment="net.kdt.pojavlaunch.prefs.screens.LauncherPreferenceControlFragment"
+            android:icon="@drawable/ic_menu_custom_controls"
+            />
+
+        <Preference
+            android:key="java_screen_setting"
+            android:title="@string/preference_java_title"
+            android:summary="@string/preference_java_description"
+            android:fragment="net.kdt.pojavlaunch.prefs.screens.LauncherPreferenceJavaFragment"
+            android:icon="@drawable/ic_setting_java_runtime"
+            />
+
+        <Preference
+            android:key="misc_screen_setting"
+            android:title="@string/preference_misc_title"
+            android:summary="@string/preference_misc_description"
+            android:fragment="net.kdt.pojavlaunch.prefs.screens.LauncherPreferenceMiscellaneousFragment"
+            android:icon="@drawable/ic_setting_misc"
+            />
+
+
+        <Preference
+            android:key="experimental_screen_setting"
+            android:title="@string/preference_experimental_title"
+            android:summary="@string/preference_experimental_description"
+            android:fragment="net.kdt.pojavlaunch.prefs.screens.LauncherPreferenceExperimentalFragment"
+            />
+    </PreferenceCategory>
+
+    <SwitchPreference
+        android:title="@string/preference_force_english_title"
+        android:key="force_english"
+        android:summary="@string/preference_force_english_description"
+        />
+
+    <Preference
+        android:title="@string/preference_ask_for_notification_title"
+        android:summary="@string/preference_ask_for_notification_description"
+        android:key="notification_permission_request"
+        />
+    <Preference
+        android:title="@string/preference_ask_for_microphone_title"
+        android:summary="@string/preference_ask_for_microphone_description"
+        android:key="microphone_permission_request"
+        />
+
+
+
+
+
+\n    <PreferenceCategory android:title="MIKAEL ADVANCED">\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="sustainedPerformance"\n            android:title="Desempenho sustentado"\n            android:summary="Mantém o desempenho alto durante o jogo"\n            android:defaultValue="false" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="force_vsync"\n            android:title="VSync"\n            android:summary="Sincroniza os frames com a tela"\n            android:defaultValue="false" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="alternate_surface"\n            android:title="Superfície alternativa"\n            android:summary="Usa o caminho alternativo de renderização"\n            android:defaultValue="true" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="bigCoreAffinity"\n            android:title="Priorizar núcleos rápidos"\n            android:summary="Prioriza os núcleos de maior desempenho"\n            android:defaultValue="false" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="zinkPreferSystemDriver"\n            android:title="Driver Zink do sistema"\n            android:summary="Prefere o driver gráfico Zink fornecido pelo sistema"\n            android:defaultValue="false" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="enableGyro"\n            android:title="Controles por giroscópio"\n            android:summary="Permite usar o movimento do aparelho nos controles"\n            android:defaultValue="false" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="always_grab_mouse"\n            android:title="Captura permanente do mouse"\n            android:summary="Mantém o mouse capturado durante a sessão"\n            android:defaultValue="false" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="keyboardPanning"\n            android:title="Mover tela com teclado"\n            android:summary="Ajusta a tela quando o teclado virtual aparece"\n            android:defaultValue="true" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="checkLibraries"\n            android:title="Verificar bibliotecas"\n            android:summary="Confere a integridade das bibliotecas baixadas"\n            android:defaultValue="true" />\n        <androidx.preference.SwitchPreferenceCompat\n            android:key="dump_shaders"\n            android:title="Diagnóstico de shaders"\n            android:summary="Salva informações de shaders para depuração"\n            android:defaultValue="false" />\n        <androidx.preference.SeekBarPreference\n            android:key="resolutionRatio"\n            android:title="Escala de resolução"\n            android:summary="Reduz a resolução interna para aumentar o desempenho"\n            android:min="50" android:max="100" android:defaultValue="100"\n            app:showSeekBarValue="true" />\n    </PreferenceCategory>\n\n
+    <PreferenceCategory android:title="MIKAEL PERSONALIZAÇÃO">
+        <ListPreference
+            android:key="mikael_accent_color"
+            android:title="Cor do launcher"
+            android:summary="Escolha a cor dos botões e destaques"
+            android:entries="@array/mikael_color_names"
+            android:entryValues="@array/mikael_color_values"
+            android:defaultValue="#4ADE80" />
+        <Preference
+            android:key="mikael_video_background"
+            android:title="Vídeo de fundo"
+            android:summary="Escolha um vídeo do aparelho para usar como fundo animado" />
+        <SwitchPreferenceCompat
+            android:key="mikael_video_enabled"
+            android:title="Ativar vídeo de fundo"
+            android:summary="Reproduz o vídeo em loop na tela inicial"
+            android:defaultValue="false" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

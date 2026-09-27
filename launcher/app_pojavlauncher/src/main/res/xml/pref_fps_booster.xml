@@ -1,0 +1,9 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <net.kdt.pojavlaunch.prefs.BackButtonPreference/>
+    <PreferenceCategory android:title="MIKAEL FPS BOOSTER">
+        <androidx.preference.SwitchPreferenceCompat android:key="mikael_fps_booster_enabled" android:title="FPS Booster" android:summary="Ativa o perfil de desempenho do Mikael Launcher" android:defaultValue="false"/>
+        <androidx.preference.SwitchPreferenceCompat android:key="mikael_sustained_performance" android:title="Desempenho sustentado" android:summary="Mantém o modo de desempenho sustentado durante a sessão" android:defaultValue="true"/>
+        <androidx.preference.SwitchPreferenceCompat android:key="mikael_disable_vsync" android:title="Desativar VSync" android:summary="Pode reduzir latência e aumentar FPS, dependendo do aparelho" android:defaultValue="true"/>
+        <androidx.preference.SeekBarPreference android:key="mikael_resolution" android:title="Resolução interna" android:summary="Reduz a resolução renderizada para ganhar FPS" android:min="50" android:max="100" android:defaultValue="75" app:showSeekBarValue="true"/>
+    </PreferenceCategory>
+</PreferenceScreen>
