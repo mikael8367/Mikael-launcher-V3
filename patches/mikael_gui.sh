@@ -1263,3 +1263,162 @@ if "String detectMinecraftVersion()" not in s:
 p.write_text(s)
 PY
 
+
+
+# FINAL FIX: account selection screen.
+# Local/offline accounts work without Microsoft; Mod Library and Forge + OptiFine
+# are available directly from "Adicionar conta".
+python3 - <<'PY'
+from pathlib import Path
+root=Path("app_pojavlauncher/src/main")
+java=root/"java/net/kdt/pojavlaunch/fragments"
+res=root/"res"
+
+(java/"SelectAuthFragment.java").write_text(r'''package net.kdt.pojavlaunch.fragments;
+
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import net.kdt.pojavlaunch.R;
+import net.kdt.pojavlaunch.Tools;
+
+public class SelectAuthFragment extends Fragment {
+    public static final String TAG = "AUTH_SELECT_FRAGMENT";
+
+    public SelectAuthFragment() {
+        super(R.layout.fragment_select_auth_method);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        Button microsoft = view.findViewById(R.id.button_microsoft_authentication);
+        Button local = view.findViewById(R.id.button_local_authentication);
+        Button ely = view.findViewById(R.id.button_ely_authentication);
+        Button mods = view.findViewById(R.id.button_mikael_mod_library);
+        Button forge = view.findViewById(R.id.button_mikael_forge_optifine);
+
+        if (microsoft != null)
+            microsoft.setOnClickListener(v -> Tools.swapFragment(requireActivity(), MicrosoftLoginFragment.class, MicrosoftLoginFragment.TAG, null));
+
+        // Offline/local profile: no Microsoft account is required.
+        if (local != null)
+            local.setOnClickListener(v -> Tools.swapFragment(requireActivity(), LocalLoginFragment.class, LocalLoginFragment.TAG, null));
+
+        if (ely != null)
+            ely.setOnClickListener(v -> Tools.swapFragment(requireActivity(), ElyLoginFragment.class, ElyLoginFragment.TAG, null));
+
+        if (mods != null)
+            mods.setOnClickListener(v -> Tools.swapFragment(requireActivity(), MikaelModLibraryFragment.class, MikaelModLibraryFragment.TAG, null));
+
+        if (forge != null)
+            forge.setOnClickListener(v -> Tools.swapFragment(requireActivity(), MikaelForgeOptiFineFragment.class, MikaelForgeOptiFineFragment.TAG, null));
+    }
+}
+''')
+
+p=java/"LocalLoginFragment.java"
+x=p.read_text()
+x=x.replace('import static net.kdt.pojavlaunch.Tools.hasOnlineProfile;\n\n','')
+x=x.replace('''        // This is overkill but meh
+        if (!hasOnlineProfile()){
+            Tools.swapFragment(requireActivity(), MainMenuFragment.class, MainMenuFragment.TAG, null);
+        }
+''','')
+p.write_text(x)
+
+(res/"layout/fragment_select_auth_method.xml").write_text(r'''<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0C0E12"
+    android:fillViewport="true">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="22dp"
+        android:paddingEnd="22dp"
+        android:paddingTop="26dp"
+        android:paddingBottom="28dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ADICIONAR CONTA"
+            android:textColor="#FFFFFF"
+            android:textSize="26sp"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Escolha uma conta ou abra uma ferramenta do Mikael Launcher."
+            android:textColor="#8F9AAA"
+            android:textSize="14sp"/>
+
+        <Button
+            android:id="@+id/button_microsoft_authentication"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:layout_marginTop="24dp"
+            android:text="MICROSOFT ACCOUNT"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:background="@drawable/mikael_button"/>
+
+        <Button
+            android:id="@+id/button_local_authentication"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:layout_marginTop="10dp"
+            android:text="CONTA LOCAL / OFFLINE"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:background="@drawable/mikael_button"/>
+
+        <Button
+            android:id="@+id/button_ely_authentication"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:layout_marginTop="10dp"
+            android:text="ELY.BY"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:background="@drawable/mikael_button"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
+            android:text="FERRAMENTAS"
+            android:textColor="#4ADE80"
+            android:textSize="14sp"
+            android:textStyle="bold"/>
+
+        <Button
+            android:id="@+id/button_mikael_mod_library"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:layout_marginTop="10dp"
+            android:text="BIBLIOTECA DE MODS"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:background="@drawable/mikael_button"/>
+
+        <Button
+            android:id="@+id/button_mikael_forge_optifine"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:layout_marginTop="10dp"
+            android:text="FORGE + OPTIFINE"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:background="@drawable/mikael_button"/>
+    </LinearLayout>
+</ScrollView>
+''')
+PY
