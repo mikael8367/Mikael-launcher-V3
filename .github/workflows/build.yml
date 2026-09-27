@@ -41,9 +41,19 @@ jobs:
 </resources>
 EOF
 
+      - name: Apply Mikael GUI
+        working-directory: launcher
+        run: |
+          chmod +x ../patches/mikael_gui.sh
+          ../patches/mikael_gui.sh
+
       - name: Make Gradle executable
         working-directory: launcher
         run: chmod +x gradlew
+
+      - name: Static checks
+        working-directory: launcher
+        run: ./gradlew :app_pojavlauncher:lintDebug --no-daemon --stacktrace
 
       - name: Build debug APK
         working-directory: launcher
