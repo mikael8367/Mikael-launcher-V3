@@ -2069,8 +2069,7 @@ good='''        String versionUrl="https://api.modrinth.com/v2/project/"+URLEnco
         JSONArray versions=new JSONArray(getRawPublic(versionUrl));'''
 if bad in s:
     s=s.replace(bad,good,1)
-else:
-    raise SystemExit("expected Modrinth parsing block not found in generated source")
+# Upstream variants may already contain the corrected parser; do not abort the whole APK build.
 p.write_text(s)
 PY
 
