@@ -1,0 +1,52 @@
+name: Vendor complete launcher source
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "patches/mikael_gui.sh"
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Mikael Launcher
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clone upstream source
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          rm -rf /tmp/amethyst
+          git clone --recursive --depth 1 https://github.com/AngelAuraMC/Amethyst-Android.git /tmp/amethyst
+
+      - name: Apply current Mikael source changes
+        run: |
+          chmod +x patches/mikael_gui.sh
+          cd /tmp/amethyst
+          ../workspace/patches/mikael_gui.sh
+        env:
+          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
+
+      - name: Copy complete source into repository
+        run: |
+          rm -rf launcher
+          mkdir -p launcher
+          rsync -a --exclude='.git' /tmp/amethyst/ launcher/
+          rm -rf launcher/.git launcher/.github
+
+      - name: Commit vendored source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add launcher
+          if git diff --cached --quiet; then
+            echo "No launcher source changes."
+            exit 0
+          fi
+          git commit -m "Vendor complete Mikael Launcher source"
+          git push
