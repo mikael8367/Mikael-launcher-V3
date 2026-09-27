@@ -28,7 +28,7 @@ public class LauncherPreferenceFragment extends PreferenceFragmentCompat impleme
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         view.setBackgroundColor(getResources().getColor(R.color.background_app));
         view.setPadding(0, 12, 0, 24);
-        view.setClipToPadding(false);
+
         super.onViewCreated(view, savedInstanceState);
     }
 

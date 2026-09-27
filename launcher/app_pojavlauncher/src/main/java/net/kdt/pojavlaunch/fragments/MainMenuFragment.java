@@ -35,7 +35,6 @@ public class MainMenuFragment extends Fragment {
   ImageButton profile=v.findViewById(R.id.edit_profile_button); mVersionSpinner=v.findViewById(R.id.mc_version_spinner);
   applyMikaelTheme(v);
   setupMikaelVideo(v);
-  v.findViewById(R.id.forge_optifine_button).setOnClickListener(x->swapFragment(requireActivity(),MikaelForgeOptiFineFragment.class,MikaelForgeOptiFineFragment.TAG,null));
   controls.setOnClickListener(x->startActivity(new Intent(requireContext(),CustomControlsActivity.class)));
   settings.setOnClickListener(x->swapFragment(requireActivity(),LauncherPreferenceFragment.class,LauncherActivity.SETTING_FRAGMENT_TAG,null));
   news.setOnClickListener(x->openURL(requireActivity(),URL_HOME));
@@ -50,7 +49,7 @@ public class MainMenuFragment extends Fragment {
   String hex=LauncherPreferences.DEFAULT_PREF.getString("mikael_accent_color","#4ADE80");
   int color;
   try{color=Color.parseColor(hex);}catch(Exception e){color=Color.rgb(74,222,128);}
-  int[] ids={R.id.custom_control_button,R.id.settings_button,R.id.open_files_button,R.id.share_logs_button,R.id.news_button,R.id.discord_button,R.id.install_jar_button,R.id.forge_optifine_button};
+  int[] ids={R.id.custom_control_button,R.id.settings_button,R.id.open_files_button,R.id.share_logs_button,R.id.news_button,R.id.discord_button,R.id.install_jar_button};
   for(int id:ids){View x=v.findViewById(id); if(x!=null) x.setBackgroundTintList(ColorStateList.valueOf(color));}
   View play=v.findViewById(R.id.play_button); if(play!=null) play.setBackgroundTintList(ColorStateList.valueOf(color));
  }
