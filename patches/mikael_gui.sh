@@ -472,3 +472,5 @@ if "MIKAEL ADVANCED" not in s:
     s=s.replace('</PreferenceScreen>', extra+'\\n</PreferenceScreen>')
     p.write_text(s)
 PY
+
+# Forge + OptiFine workflow will be added to the version area in the launcher UI.
