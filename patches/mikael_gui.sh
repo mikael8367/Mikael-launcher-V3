@@ -763,7 +763,7 @@ if "mikael_video_background" not in s:
     s=s.replace("public class LauncherPreferenceFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {",
                 "public class LauncherPreferenceFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {\n    private static final int MIKAEL_VIDEO_PICKER = 9401;")
     s=s.replace("setupNotificationRequestPreference();",
-                """setupNotificationRequestPreference();
+                '''setupNotificationRequestPreference();
         Preference video = findPreference("mikael_video_background");
         if (video != null) {
             video.setOnPreferenceClickListener(pref -> {
@@ -774,9 +774,9 @@ if "mikael_video_background" not in s:
                 startActivityForResult(i, MIKAEL_VIDEO_PICKER);
                 return true;
             });
-        }""",1)
+        }''',1)
     marker="    @Override\n    public void onResume()"
-    insert="""    @Override
+    insert='''    @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == MIKAEL_VIDEO_PICKER && resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
@@ -794,7 +794,7 @@ if "mikael_video_background" not in s:
         }
     }
 
-"""
+'''
     s=s.replace(marker,insert+marker)
     p.write_text(s)
 PY
@@ -1909,10 +1909,7 @@ public class MikaelModLibraryFragment extends Fragment {
 
     private void confirmInstall(ModItem m){
         new AlertDialog.Builder(requireContext()).setTitle(m.name)
-                .setMessage(m.summary+"
-
-Minecraft: "+(detectMinecraftVersion()==null?"automático":detectMinecraftVersion())+"
-Dependências obrigatórias: automáticas")
+                .setMessage(m.summary+"\\n\\nMinecraft: "+(detectMinecraftVersion()==null?"automático":detectMinecraftVersion())+"\\nDependências obrigatórias: automáticas")
                 .setNegativeButton("CANCELAR",null)
                 .setPositiveButton("INSTALAR", (d,w)->installProject(m.modId))
                 .show();
@@ -3101,7 +3098,7 @@ public class MikaelCrashCheckerFragment extends Fragment {
             int i=t.indexOf(k);
             if(i>=0){
                 String snippet=t.substring(Math.max(0,i-260),Math.min(t.length(),i+500)).replace('\n',' ');
-                Matcher pm=Pattern.compile("(?i)([a-z0-9_.-]{2,80}\.jar)").matcher(snippet);
+                Matcher pm=Pattern.compile("(?i)([a-z0-9_.-]{2,80}\\.jar)").matcher(snippet);
                 if(pm.find())return pm.group(1);
             }
         }
