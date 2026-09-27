@@ -2152,3 +2152,48 @@ s=s.replace('android:layout_height="@dimen/_50sdp"', 'android:layout_height="@di
 s=s.replace('android:layout_height="@dimen/_54sdp"', 'android:layout_height="@dimen/_50sdp"')
 p.write_text(s)
 PY
+
+# FINAL FIX: add the combined Forge + OptiFine installer directly to the profile creation list.
+python3 - <<'PY'
+from pathlib import Path
+
+p=Path("app_pojavlauncher/src/main/res/layout/fragment_profile_type.xml")
+s=p.read_text()
+if 'android:id="@+id/modded_profile_forge_optifine"' not in s:
+    needle='''        <com.kdt.mcgui.MineButton
+            android:id="@+id/modded_profile_neoforge"'''
+    button='''        <com.kdt.mcgui.MineButton
+            android:id="@+id/modded_profile_forge_optifine"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/padding_large"
+            android:layout_marginTop="@dimen/padding_large"
+            android:text="FORGE + OPTIFINE" />
+
+'''
+    if needle not in s:
+        raise SystemExit("NeoForge button marker not found")
+    s=s.replace(needle,button+needle,1)
+p.write_text(s)
+
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/ProfileTypeSelectFragment.java")
+s=p.read_text()
+listener='''        view.findViewById(R.id.modded_profile_forge_optifine).setOnClickListener(v ->
+                Tools.swapFragment(requireActivity(), MikaelForgeOptiFineFragment.class,
+                        MikaelForgeOptiFineFragment.TAG, null));
+'''
+if 'R.id.modded_profile_forge_optifine' not in s:
+    marker='''        view.findViewById(R.id.modded_profile_neoforge).setOnClickListener((v)->'''
+    if marker not in s:
+        raise SystemExit("NeoForge listener marker not found")
+    s=s.replace(marker,listener+marker,1)
+old='''R.id.modded_profile_fabric, R.id.modded_profile_quilt,
+                R.id.modded_profile_forge, R.id.modded_profile_neoforge,'''''
+new='''R.id.modded_profile_fabric, R.id.modded_profile_quilt,
+                R.id.modded_profile_forge, R.id.modded_profile_forge_optifine,
+                R.id.modded_profile_neoforge,'''''
+if old not in s:
+    raise SystemExit("Green button IDs marker not found")
+s=s.replace(old,new,1)
+p.write_text(s)
+PY
