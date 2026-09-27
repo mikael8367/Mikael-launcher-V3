@@ -62,7 +62,7 @@ public class MikaelCrashResolverFragment extends Fragment {
 
     private static final Pattern MC=Pattern.compile("(?i)(?:minecraft(?: version)?|game version|version id)[^0-9]{0,32}(\\d+\\.\\d+(?:\\.\\d+)?)");
     private static final Pattern JAR=Pattern.compile("(?i)([A-Za-z0-9_.()+ -]{2,180}\.jar)");
-    private static final Pattern DEP=Pattern.compile("(?i)(?:missing dependency|could not find required mod|depends on|requires(?: a dependency)?)[^:\n]*[:\\s]+([A-Za-z0-9_.:\-/]{3,100})");
+    private static final Pattern DEP=Pattern.compile("(?i)(?:missing dependency|could not find required mod|depends on|requires(?: a dependency)?)[^:\n]*[:\\s]+([A-Za-z0-9_.:\\-/]{3,100})");
     private static final Pattern JAVA_CLASS=Pattern.compile("(?i)class file version\\s+(\\d+)");
     private static final Pattern OUTDATED=Pattern.compile("(?i)([A-Za-z0-9_.-]+)[^\n]{0,100}(?:is outdated|outdated|update to)");
     private static final Pattern BAD_FILE=Pattern.compile("(?i)([A-Za-z0-9_.()+ -]{2,180}\.(?:jar|zip|json|toml))");
