@@ -328,7 +328,7 @@ pref='''<Preference
 
         '''
 if "key=\"mikael_fps_booster\"" not in s:
-    s=s.replace(needle, needle+"\\n\\n        "+pref,1)
+    s=s.replace(needle, needle+"\n\n        "+pref,1)
 p.write_text(s)
 PY
 cat > "$ROOT/java/net/kdt/pojavlaunch/prefs/screens/MikaelFpsBoosterFragment.java" <<'EOF'
