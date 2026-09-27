@@ -4,6 +4,10 @@ ROOT=app_pojavlauncher/src/main
 RES=$ROOT/res
 JAVA=$ROOT/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java
 mkdir -p "$RES/drawable"
+# Remove upstream Amethyst/Pojav visual assets so Mikael Launcher uses only Mikael branding.
+rm -f "$RES/drawable/ic_setting_sign_in_background.webp" "$RES/drawable/notif_icon.png"
+rm -f "$RES"/mipmap-*/ic_launcher_background.webp
+
 
 # Use the Mikael logo as the actual Android launcher icon.
 MANIFEST="$ROOT/AndroidManifest.xml"
