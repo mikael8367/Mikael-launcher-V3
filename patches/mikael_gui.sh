@@ -59,7 +59,8 @@ insert = '''<androidx.constraintlayout.widget.ConstraintLayout
 if needle not in s:
     raise SystemExit("launcher layout anchor not found")
 s=s.replace(needle, insert, 1)
-s=s.replace('app:layout_constraintTop_toBottomOf="@id/news_button"', 'app:layout_constraintTop_toBottomOf="@id/mikael_header_space"', 1)
+s=s.replace('app:layout_constraintTop_toBottomOf="@id/news_button"', 'app:layout_constraintTop_toBottomOf="@id/news_button"', 1)
+s=s.replace('app:layout_constraintTop_toTopOf="parent"', 'app:layout_constraintTop_toBottomOf="@id/mikael_header_space"', 1)
 layout.write_text(s)
 
 auth = Path("app_pojavlauncher/src/main/res/layout/fragment_select_auth_method.xml")
