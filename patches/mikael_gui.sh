@@ -1142,7 +1142,7 @@ if "java.lang.reflect.Field" not in s:
     s=s.replace("import java.util.*;", "import java.util.*; import java.lang.reflect.Field; import java.lang.reflect.Method;")
 # Make the search URL include the detected Minecraft version when available.
 old='String classId=t==0?"6":t==1?"12":t==2?"6552":"17"; String u="https://api.curseforge.com/v1/mods/search?gameId=432&classId="+classId+"&pageSize=30"; if(!q.isEmpty())u+="&searchFilter="+URLEncoder.encode(q,"UTF-8");'
-new='String classId=t==0?"6":t==1?"12":t==2?"6552":"17"; String mcVersion=detectMinecraftVersion(); String u="https://api.curseforge.com/v1/mods/search?gameId=432&classId="+classId+"&pageSize=30"; if(mcVersion!=null&&!mcVersion.isEmpty())u+="&gameVersions="+URLEncoder.encode(mcVersion,"UTF-8"); if(!q.isEmpty())u+="&searchFilter="+URLEncoder.encode(q,"UTF-8");'
+new='String classId=t==0?"6":t==1?"12":t==2?"6552":"17"; String mcVersion=detectMinecraftVersion(); String u="https://api.curseforge.com/v1/mods/search?gameId=432&classId="+classId+"&pageSize=30"; if(mcVersion!=null&&!mcVersion.isEmpty())u+="&gameVersion="+URLEncoder.encode(mcVersion,"UTF-8"); if(!q.isEmpty())u+="&searchFilter="+URLEncoder.encode(q,"UTF-8");'
 if old in s:
     s=s.replace(old,new)
 # Show which version is being used.
