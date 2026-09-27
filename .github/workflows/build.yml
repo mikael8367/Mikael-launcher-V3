@@ -41,12 +41,6 @@ jobs:
 </resources>
 EOF
 
-      - name: Apply Mikael GUI
-        working-directory: launcher
-        run: |
-          chmod +x ../patches/mikael_gui.sh
-          ../patches/mikael_gui.sh
-
       - name: Make Gradle executable
         working-directory: launcher
         run: chmod +x gradlew
