@@ -441,18 +441,44 @@ cat > "$RES/layout/mikael_preference.xml" <<'EOF'
 </LinearLayout>
 EOF
 
+cat > "$RES/layout/mikael_seekbar_preference.xml" <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:minHeight="92dp" android:layout_marginStart="12dp" android:layout_marginEnd="12dp"
+    android:layout_marginTop="6dp" android:layout_marginBottom="6dp"
+    android:paddingStart="18dp" android:paddingEnd="14dp" android:paddingTop="10dp" android:paddingBottom="10dp"
+    android:orientation="vertical" android:background="@drawable/mikael_pref_row">
+    <TextView android:id="@android:id/title" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+    <TextView android:id="@android:id/summary" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="3dp" android:textColor="#8F9AAA" android:textSize="12sp"/>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp"
+        android:gravity="center_vertical" android:orientation="horizontal">
+        <SeekBar android:id="@+id/seekbar" android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:background="@null" android:clickable="false" android:focusable="false"/>
+        <TextView android:id="@+id/seekbar_value" android:layout_width="42dp" android:layout_height="wrap_content"
+            android:gravity="center" android:textColor="#4ADE80" android:textStyle="bold" android:textSize="12sp"/>
+    </LinearLayout>
+</LinearLayout>
+EOF
+
 cat >> "$RES/values/styles.xml" <<'EOF'
 <style name="MikaelPreferenceTheme" parent="@style/PreferenceThemeOverlay.v14.Material">
     <item name="preferenceStyle">@style/MikaelPreferenceStyle</item>
     <item name="switchPreferenceStyle">@style/MikaelSwitchPreferenceStyle</item>
     <item name="switchPreferenceCompatStyle">@style/MikaelSwitchPreferenceStyle</item>
-    <item name="seekBarPreferenceStyle">@style/MikaelPreferenceStyle</item>
+    <item name="seekBarPreferenceStyle">@style/MikaelSeekBarPreferenceStyle</item>
 </style>
 <style name="MikaelPreferenceStyle" parent="@style/Preference.Material">
     <item name="android:layout">@layout/mikael_preference</item>
 </style>
 <style name="MikaelSwitchPreferenceStyle" parent="@style/Preference.SwitchPreference">
     <item name="android:layout">@layout/mikael_preference</item>
+</style>
+<style name="MikaelSeekBarPreferenceStyle" parent="@style/Preference.SeekBarPreference">
+    <item name="android:layout">@layout/mikael_seekbar_preference</item>
+    <item name="showSeekBarValue">true</item>
 </style>
 EOF
 
