@@ -71,8 +71,9 @@ public class NewJREUtil {
     }
 
     private static MathUtils.RankedValue<InternalRuntime> getNearestInternalRuntime(int targetVersion) {
-        List<InternalRuntime> runtimeList = Arrays.asList(InternalRuntime.values());
-        return MathUtils.findNearestPositive(targetVersion, runtimeList, (runtime)->runtime.majorVersion);
+        // Mikael Launcher does not bundle Java runtimes. The user chooses
+        // which external runtime to download from the Java settings screen.
+        return null;
     }
 
 

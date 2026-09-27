@@ -8,8 +8,8 @@
         <Preference
             android:key="install_jre"
             android:persistent="false"
-            android:summary="@string/multirt_subtitle"
-            android:title="@string/multirt_title"/>
+            android:summary="Baixe somente as versões Java que você precisar. Nenhuma runtime vem dentro do APK."
+            android:title="RUNTIMES JAVA"/>
 
         <androidx.preference.EditTextPreference
             android:dialogTitle="@string/mcl_setting_title_javaargs"
