@@ -274,7 +274,7 @@ public class ElyLoginFragment extends Fragment {
                     c.setDoOutput(true); c.setRequestProperty("Content-Type","application/json; charset=UTF-8");
                     try(OutputStream out=c.getOutputStream()){ out.write(req.toString().getBytes(StandardCharsets.UTF_8)); }
                     InputStream in=c.getResponseCode() >= 400 ? c.getErrorStream() : c.getInputStream();
-                    String body=new String(in.readAllBytes(),StandardCharsets.UTF_8);
+                    java.io.ByteArrayOutputStream bos=new java.io.ByteArrayOutputStream(); byte[] buf=new byte[8192]; int len; while((len=in.read(buf))!=-1) bos.write(buf,0,len); String body=new String(bos.toByteArray(),StandardCharsets.UTF_8);
                     if(c.getResponseCode() >= 400) throw new IOException(new JSONObject(body).optString("errorMessage","Falha na autenticação Ely.by"));
                     JSONObject json=new JSONObject(body);
                     JSONObject profile=json.getJSONObject("selectedProfile");
@@ -289,7 +289,7 @@ public class ElyLoginFragment extends Fragment {
                     account.save();
                     requireActivity().runOnUiThread(() -> {
                         status.setText("Conta Ely.by adicionada.");
-                        Tools.backToMainMenu(requireActivity());
+                        Tools.swapFragment(requireActivity(), MainMenuFragment.class, MainMenuFragment.TAG, null);
                     });
                 } catch(Exception e) {
                     requireActivity().runOnUiThread(() -> { login.setEnabled(true); status.setText("Erro: "+e.getMessage()); });
@@ -1057,14 +1057,6 @@ if "mod_library_button" not in s:
     p.write_text(s)
 PY
 
-python3 - <<'PY'
-from pathlib import Path
-p=Path(".github/workflows/build.yml")
-s=p.read_text()
-if "CURSEFORGE_API_KEY:" not in s:
-    s=s.replace("      - name: Build APK\n","      - name: Build APK\n        env:\n          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}\n")
-    p.write_text(s)
-PY
 
 
 # Unified Mikael content library: mods, resource packs, shaders and worlds.
@@ -1169,4 +1161,3 @@ if "String detectMinecraftVersion()" not in s:
 p.write_text(s)
 PY
 
-# Source vendoring trigger: complete launcher source is maintained in launcher/.
