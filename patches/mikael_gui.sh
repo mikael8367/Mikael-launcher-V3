@@ -474,3 +474,14 @@ if "MIKAEL ADVANCED" not in s:
 PY
 
 # Forge + OptiFine workflow will be added to the version area in the launcher UI.
+
+# Add a Forge + OptiFine entry beside the Minecraft version selector.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/res/layout/fragment_launcher.xml")
+s=p.read_text()
+if "forge_optifine_button" not in s:
+    target='</LinearLayout>\\n<com.kdt.mcgui.MineButton android:id="@+id/play_button"'
+    s=s.replace(target, '<com.kdt.mcgui.LauncherMenuButton android:id="@+id/forge_optifine_button" style="@style/LauncherMenuButton.Universal" android:layout_width="match_parent" android:layout_height="@dimen/_44sdp" android:layout_marginTop="@dimen/_5sdp" android:text="FORGE + OPTIFINE" android:textSize="@dimen/_11ssp" android:background="@drawable/mikael_button"/>\\n</LinearLayout>\\n<com.kdt.mcgui.MineButton android:id="@+id/play_button"', 1)
+    p.write_text(s)
+PY
