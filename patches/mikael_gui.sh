@@ -4999,48 +4999,34 @@ if "private void advancedRepairAudit(" not in s:
         if(hasAny(l,"download failed","failed to download","connection reset","sockettimeoutexception","unknownhostexception")){
             int n=cleanTemps(dir);
 
-
-# BUILD SANITIZER: normalize Java-8-compatible regex/string syntax after all generated source rewrites.
+# BUILD SANITIZER: final Java-8/source compatibility pass.
 python3 - <<'PY'
 from pathlib import Path
+import re
 
-# Crash checker: Java string literals cannot contain an unescaped quote inside a regex character class,
-# and a backslash before '-' must itself be escaped. Use a safe character class with '-' at the end.
 p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelCrashCheckerFragment.java")
 if p.exists():
     x=p.read_text()
-    x=x.replace('Pattern.compile("(?i)(?:fabric.mod.json|modid|id)[:=]\\\\s*[\\\\"\\\']?([a-z0-9_.-]{2,80})")',
-                'Pattern.compile("(?i)(?:fabric\\\\.mod\\\\.json|modid|id)[:=]\\\\s*[\\\\\\\"\\\']?([a-z0-9_.-]{2,80})")')
-    x=x.replace('Pattern.compile("(?i)([a-z0-9_.-]{2,80}\\\\.jar)")',
-                'Pattern.compile("(?i)([a-z0-9_.-]{2,80}\\\\.jar)")')
-    x=x.replace('Pattern.compile("(?i)(?:fabric.mod.json|modid|id)[:=]\\\\s*[\\\\"\\\']?([a-z0-9_.-]{2,80})")',
-                'Pattern.compile("(?i)(?:fabric\\\\.mod\\\\.json|modid|id)[:=]\\\\s*[\\\\\\\"\\\']?([a-z0-9_.-]{2,80})")')
+    x=re.sub(r'private static final Pattern FABRIC_MOD =.*?;', 'private static final Pattern FABRIC_MOD = Pattern.compile("(?i)(?:fabric\\\\.mod\\\\.json|modid|id)[:=]\\\\s*[\\\\\\\"\\\']?([a-z0-9_.-]{2,80})");', x, count=1)
+    x=re.sub(r'Matcher pm=Pattern\\.compile\\(".*?\\\\\\\\\\.jar"\\)', 'Matcher pm=Pattern.compile("(?i)([a-z0-9_.-]{2,80}\\\\\\\\.jar)")', x, count=1)
     p.write_text(x)
 
-# Crash resolver: avoid Java-illegal single backslashes before '-' in regex character classes.
 p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelCrashResolverFragment.java")
 if p.exists():
     x=p.read_text()
-    x=x.replace('A-Za-z0-9_.()\\\\-+ ]','A-Za-z0-9_.()-+ ]')
-    x=x.replace('A-Za-z0-9_.\\\\-]+','A-Za-z0-9_.-]+')
-    x=x.replace('A-Za-z0-9_.()\\\\-+ ]','A-Za-z0-9_.()-+ ]')
+    x=re.sub(r'private static final Pattern JAR=.*?;', 'private static final Pattern JAR=Pattern.compile("(?i)([A-Za-z0-9_.()+ -]{2,180}\\\\.jar)");', x, count=1)
+    x=re.sub(r'private static final Pattern OUTDATED=.*?;', 'private static final Pattern OUTDATED=Pattern.compile("(?i)([A-Za-z0-9_.-]+)[^\\\\n]{0,100}(?:is outdated|outdated|update to)");', x, count=1)
+    x=re.sub(r'private static final Pattern BAD_FILE=.*?;', 'private static final Pattern BAD_FILE=Pattern.compile("(?i)([A-Za-z0-9_.()+ -]{2,180}\\\\.(?:jar|zip|json|toml))");', x, count=1)
+    x=x.replace('A-Za-z0-9_.:\\\\-/','A-Za-z0-9_.:/-')
     p.write_text(x)
 
-# Mod library: keep the confirmation message as a normal Java string with escaped newlines.
 p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelModLibraryFragment.java")
 if p.exists():
     x=p.read_text()
-    start='        new AlertDialog.Builder(requireContext()).setTitle(m.name)\\n                .setMessage(m.summary+"\\n\\nMinecraft: "+(detectMinecraftVersion()==null?"automático":detectMinecraftVersion())+"\\nDependências obrigatórias: automáticas")'
-    # If the heredoc produced literal newlines inside the Java string, rebuild this small method block.
-    if '.setMessage(m.summary+"\\n' not in x:
-        import re
-        x=re.sub(r'(?s)        new AlertDialog\\.Builder\\(requireContext\\)\\.setTitle\\(m\\.name\\)\\s*\\.setMessage\\(m\\.summary\\+".*?Dependências obrigatórias: automáticas"\\)',
-                 '        new AlertDialog.Builder(requireContext()).setTitle(m.name)\\n                .setMessage(m.summary+"\\\\n\\\\nMinecraft: "+(detectMinecraftVersion()==null?"automático":detectMinecraftVersion())+"\\\\nDependências obrigatórias: automáticas")', x, count=1)
+    x=re.sub(r'(?s)        new AlertDialog\\.Builder\\(requireContext\\)\\.setTitle\\(m\\.name\\).*?\\.setNegativeButton\\("CANCELAR",null\\)', '        new AlertDialog.Builder(requireContext()).setTitle(m.name)\n                .setMessage(m.summary+"\\\\n\\\\nMinecraft: "+(detectMinecraftVersion()==null?"automático":detectMinecraftVersion())+"\\\\nDependências obrigatórias: automáticas")\n                .setNegativeButton("CANCELAR",null)', x, count=1)
     p.write_text(x)
 
-# Launcher preferences: strip accidental Java text-block delimiters if introduced by generated replacements.
-p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/prefs/screens/LauncherPreferenceFragment.java")
+p=Path("app_pojavlaunch/src/main/java/net/kdt/pojavlaunch/prefs/screens/LauncherPreferenceFragment.java")
 if p.exists():
-    x=p.read_text().replace('"""','"')
-    p.write_text(x)
+    p.write_text(p.read_text().replace('"""','"'))
 PY
