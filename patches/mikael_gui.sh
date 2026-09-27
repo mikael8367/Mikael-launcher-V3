@@ -5,6 +5,17 @@ RES=$ROOT/res
 JAVA=$ROOT/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java
 mkdir -p "$RES/drawable"
 
+# Use the Mikael logo as the actual Android launcher icon.
+MANIFEST="$ROOT/AndroidManifest.xml"
+python3 - <<'PY'
+from pathlib import Path
+p = Path("app_pojavlauncher/src/main/AndroidManifest.xml")
+s = p.read_text()
+s = s.replace('android:icon="@mipmap/ic_launcher"', 'android:icon="@drawable/mikael_logo"')
+s = s.replace('android:roundIcon="@mipmap/ic_launcher_round"', 'android:roundIcon="@drawable/mikael_logo"')
+p.write_text(s)
+PY
+
 cat > "$RES/drawable/mikael_logo.xml" <<'EOF'
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="128dp" android:height="128dp" android:viewportWidth="128" android:viewportHeight="128">
 <path android:fillColor="#101827" android:pathData="M8,8h112v112H8z"/>
