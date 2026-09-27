@@ -1,31 +1,25 @@
 name: Build Mikael Launcher APK
-# Fixed patch paths/XML; rebuild
-
 on:
   push:
     branches: ["main", "master", "fix/optifine-and-stable-versions"]
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Prepare launcher
         run: |
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           rm -rf launcher && git clone --recursive --depth 1 https://github.com/AngelAuraMC/Amethyst-Android.git launcher
-
       - name: Apply Mikael source
         working-directory: launcher
         run: |
           chmod +x "$GITHUB_WORKSPACE/patches/mikael_gui.sh"
           "$GITHUB_WORKSPACE/patches/mikael_gui.sh"
-
+          cp "$GITHUB_WORKSPACE/patches/MikaelCrashResolverFragment.java" app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelCrashResolverFragment.java
       - name: Build APK
         working-directory: launcher
         env:
@@ -33,10 +27,8 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew :app_pojavlauncher:assembleDebug --no-daemon --stacktrace
-
       - name: Verify APK
         run: test -n "$(find launcher/app_pojavlauncher/build/outputs/apk/debug -name '*.apk' -print -quit)"
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -44,7 +36,6 @@ jobs:
           path: launcher/app_pojavlauncher/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 30
-
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
