@@ -18,11 +18,28 @@ jobs:
       - name: Checkout upstream launcher
         run: |
           git clone --recursive --depth 1 https://github.com/AngelAuraMC/Amethyst-Android.git launcher
+          echo "Using upstream launcher with dynamic Minecraft version metadata."
 
       - name: Prepare branding
         working-directory: launcher
         run: |
-          find app_pojavlauncher/src/main/res -type f -name '*.xml' -print0 | xargs -0 sed -i             -e 's/Angel Aura Amethyst/Mikael Launcher/g'             -e 's/Amethyst Launcher/Mikael Launcher/g'             -e 's/PojavLauncher/Mikael Launcher/g' || true
+          find app_pojavlauncher/src/main/res -type f -name '*.xml' -print0 | xargs -0 -r sed -i \
+            -e 's/Angel Aura Amethyst/Mikael Launcher/g' \
+            -e 's/Amethyst Launcher/Mikael Launcher/g' \
+            -e 's/PojavLauncher/Mikael Launcher/g'
+          # Brand the launcher UI without removing upstream functionality.
+          grep -RIl --include='*.xml' 'PojavLauncher\|Amethyst' app_pojavlauncher/src/main/res | \
+            xargs -r sed -i -e 's/PojavLauncher/Mikael Launcher/g' -e 's/Amethyst/Mikael Launcher/g'
+          # Keep a visible Mikael Launcher build marker in the Android resources.
+          mkdir -p app_pojavlauncher/src/main/res/values
+          cat > app_pojavlauncher/src/main/res/values/mikael_branding.xml <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mikael_launcher_name">Mikael Launcher</string>
+    <string name="mikael_launcher_subtitle">Minecraft Java • Android</string>
+    <string name="mikael_launcher_performance">Performance mode</string>
+</resources>
+EOF
 
       - name: Make Gradle executable
         working-directory: launcher
