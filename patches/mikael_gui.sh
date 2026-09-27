@@ -4040,8 +4040,9 @@ if p.exists():
     for i,line in enumerate(lines):
         if "List<JMinecraftVersionList.Version> releaseList" in line:
             lines[i]='        List<JMinecraftVersionList.Version> releaseList = new FilteredSubList<>(versionList, item -> item != null && "release".equals(item.type) && item.id != null && item.id.matches("[0-9]+[.][0-9]+([.][0-9]+)?"));'
-            if i + 1 < len(lines) and "item ->" in lines[i + 1]:
-                lines.pop(i + 1)
+            j=i+1
+            while j < len(lines) and ("item ->" in lines[j] or "item.id.matches" in lines[j] or "&& item.id" in lines[j]):
+                lines.pop(j)
             break
     p.write_text("\n".join(lines)+"\n")
 PY
