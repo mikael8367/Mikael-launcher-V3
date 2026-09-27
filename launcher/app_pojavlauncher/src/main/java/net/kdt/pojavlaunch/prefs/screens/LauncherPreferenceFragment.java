@@ -36,6 +36,15 @@ public class LauncherPreferenceFragment extends PreferenceFragmentCompat impleme
     public void onCreatePreferences(Bundle b, String str) {
         addPreferencesFromResource(R.xml.pref_main);
         setupNotificationRequestPreference();
+        Preference mikaelAccent = findPreference("mikael_accent_color");
+        if (mikaelAccent != null) {
+            mikaelAccent.setSummary("Cor atual: " + LauncherPreferences.DEFAULT_PREF.getString("mikael_accent_color", "#4ADE80"));
+            mikaelAccent.setOnPreferenceClickListener(preference -> {
+                showMikaelAccentDialog();
+                return true;
+            });
+        }
+        wireMikaelAdvancedPreferences();
         Preference video = findPreference("mikael_video_background");
         if (video != null) {
             video.setOnPreferenceClickListener(pref -> {
@@ -47,6 +56,61 @@ public class LauncherPreferenceFragment extends PreferenceFragmentCompat impleme
                 return true;
             });
         }
+    }
+
+    private void showMikaelAccentDialog() {
+        final String[] names = {"Verde Mikael","Azul","Roxo","Vermelho","Laranja","Ciano","Rosa","Amarelo"};
+        final String[] values = {"#4ADE80","#60A5FA","#A78BFA","#F87171","#FB923C","#22D3EE","#F472B6","#FACC15"};
+        String current = LauncherPreferences.DEFAULT_PREF.getString("mikael_accent_color", "#4ADE80");
+        int checked = 0;
+        for (int i = 0; i < values.length; i++) if (values[i].equalsIgnoreCase(current)) checked = i;
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("PERSONALIZAR LAUNCHER")
+                .setSingleChoiceItems(names, checked, (dialog, which) -> {
+                    getPreferenceManager().getSharedPreferences().edit()
+                            .putString("mikael_accent_color", values[which]).apply();
+                    LauncherPreferences.loadPreferences(getContext());
+                    Preference pref = findPreference("mikael_accent_color");
+                    if (pref != null) pref.setSummary("Cor atual: " + values[which]);
+                    dialog.dismiss();
+                })
+                .setNegativeButton("CANCELAR", null)
+                .show();
+    }
+
+    private void wireMikaelAdvancedPreferences() {
+        String[] keys = {
+                "sustainedPerformance","force_vsync","alternate_surface","bigCoreAffinity",
+                "zinkPreferSystemDriver","enableGyro","always_grab_mouse","keyboardPanning",
+                "checkLibraries","dump_shaders"
+        };
+        for (String key : keys) {
+            Preference pref = findPreference(key);
+            if (pref == null) continue;
+            pref.setOnPreferenceChangeListener((preference, newValue) -> {
+                LauncherPreferences.loadPreferences(getContext());
+                return true;
+            });
+            boolean value = getPreferenceManager().getSharedPreferences().getBoolean(key, false);
+            if ("alternate_surface".equals(key)) value = getPreferenceManager().getSharedPreferences().getBoolean(key, true);
+            if ("keyboardPanning".equals(key)) value = getPreferenceManager().getSharedPreferences().getBoolean(key, true);
+            if ("checkLibraries".equals(key)) value = getPreferenceManager().getSharedPreferences().getBoolean(key, true);
+            updateMikaelAdvancedSummary(pref, value);
+        }
+        Preference resolution = findPreference("resolutionRatio");
+        if (resolution != null) {
+            resolution.setOnPreferenceChangeListener((preference, newValue) -> {
+                LauncherPreferences.loadPreferences(getContext());
+                preference.setSummary("Escala atual: " + newValue + "%");
+                return true;
+            });
+        }
+    }
+
+    private void updateMikaelAdvancedSummary(Preference pref, boolean enabled) {
+        String base = String.valueOf(pref.getSummary());
+        base = base.replaceAll("\s*•\s*(ATIVADO|DESATIVADO)$", "");
+        pref.setSummary(base + (base.equals("null") ? "" : " • ") + (enabled ? "ATIVADO" : "DESATIVADO"));
     }
 
     private void setupNotificationRequestPreference() {
@@ -105,6 +169,20 @@ public class LauncherPreferenceFragment extends PreferenceFragmentCompat impleme
     @Override
     public void onSharedPreferenceChanged(SharedPreferences p, String s) {
         LauncherPreferences.loadPreferences(getContext());
+        if ("mikael_accent_color".equals(s)) {
+            Preference pref = findPreference("mikael_accent_color");
+            if (pref != null) pref.setSummary("Cor atual: " + p.getString(s, "#4ADE80"));
+            return;
+        }
+        String[] advanced = {"sustainedPerformance","force_vsync","alternate_surface","bigCoreAffinity",
+                "zinkPreferSystemDriver","enableGyro","always_grab_mouse","keyboardPanning","checkLibraries","dump_shaders"};
+        for (String key : advanced) {
+            if (key.equals(s)) {
+                Preference pref = findPreference(key);
+                if (pref != null) updateMikaelAdvancedSummary(pref, p.getBoolean(key, false));
+                break;
+            }
+        }
     }
 
     protected Preference requirePreference(CharSequence key) {

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="#0C0E12" android:padding="14dp">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="RESOLVER AUTOMÁTICO PRO MAX" android:textColor="#FFFFFF" android:textSize="23sp" android:textStyle="bold"/>
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Diagnóstico + reparo transacional de mods, dependências, modloader, RAM, Java, arquivos, GPU e downloads."
+        android:textColor="#9AA4B2" android:textSize="12sp"/>
+    <TextView android:id="@+id/resolve_status" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="10dp" android:textColor="#4ADE80" android:textStyle="bold"/>
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:layout_marginTop="7dp" android:fillViewport="true">
+        <TextView android:id="@+id/resolve_result" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textColor="#E8EDF3" android:textSize="12sp" android:lineSpacingExtra="3dp"/>
+    </ScrollView>
+    <Button android:id="@+id/resolve_button" android:layout_width="match_parent" android:layout_height="48dp"
+        android:text="RESOLVER CRASH AUTOMATICAMENTE" android:textStyle="bold" android:background="@drawable/mikael_button"/>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:layout_marginTop="6dp">
+        <Button android:id="@+id/resolve_undo" android:layout_width="0dp" android:layout_height="46dp"
+            android:layout_weight="1" android:text="DESFAZER ÚLTIMA" android:background="@drawable/mikael_button"/>
+        <Button android:id="@+id/resolve_back" android:layout_width="0dp" android:layout_height="46dp"
+            android:layout_weight="1" android:layout_marginStart="6dp" android:text="VOLTAR" android:background="@drawable/mikael_button"/>
+    </LinearLayout>
+</LinearLayout>

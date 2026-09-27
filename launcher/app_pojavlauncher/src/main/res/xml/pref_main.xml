@@ -145,13 +145,11 @@
     </PreferenceCategory>
 \n
     <PreferenceCategory android:title="MIKAEL PERSONALIZAÇÃO">
-        <ListPreference
+        <Preference
             android:key="mikael_accent_color"
-            android:title="Cor do launcher"
+            android:title="PERSONALIZAR LAUNCHER"
             android:summary="Escolha a cor dos botões e destaques"
-            android:entries="@array/mikael_color_names"
-            android:entryValues="@array/mikael_color_values"
-            android:defaultValue="#4ADE80" />
+            android:persistent="true" />
         <Preference
             android:key="mikael_video_background"
             android:title="Vídeo de fundo"
