@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+cd launcher
 ROOT=app_pojavlauncher/src/main
 RES=$ROOT/res
 JAVA=$ROOT/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java
@@ -45,14 +46,14 @@ cat > "$RES/layout/fragment_launcher.xml" <<'EOF'
 <com.kdt.mcgui.LauncherMenuButton android:id="@+id/settings_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="@dimen/_6sdp" android:text="AJUSTES" android:background="@drawable/mikael_button"/>
 </LinearLayout>
 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-<com.kdt.mcgui.LauncherMenuButton android:id="@+id/open_files_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="ARQUIVOS"/ android:background="@drawable/mikael_button">
-<com.kdt.mcgui.LauncherMenuButton android:id="@+id/share_logs_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="@dimen/_6sdp" android:text="LOGS"/ android:background="@drawable/mikael_button">
+<com.kdt.mcgui.LauncherMenuButton android:id="@+id/open_files_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="ARQUIVOS" android:background="@drawable/mikael_button"/>
+<com.kdt.mcgui.LauncherMenuButton android:id="@+id/share_logs_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="@dimen/_6sdp" android:text="LOGS" android:background="@drawable/mikael_button"/>
 </LinearLayout>
 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-<com.kdt.mcgui.LauncherMenuButton android:id="@+id/news_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="NOTÍCIAS"/ android:background="@drawable/mikael_button">
-<com.kdt.mcgui.LauncherMenuButton android:id="@+id/discord_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="@dimen/_6sdp" android:text="COMUNIDADE"/ android:background="@drawable/mikael_button">
+<com.kdt.mcgui.LauncherMenuButton android:id="@+id/news_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="NOTÍCIAS" android:background="@drawable/mikael_button"/>
+<com.kdt.mcgui.LauncherMenuButton android:id="@+id/discord_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="@dimen/_6sdp" android:text="COMUNIDADE" android:background="@drawable/mikael_button"/>
 </LinearLayout>
-<com.kdt.mcgui.LauncherMenuButton android:id="@+id/install_jar_button" style="@style/LauncherMenuButton.Universal" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="INSTALAR MOD / JAR"/ android:background="@drawable/mikael_button">
+<com.kdt.mcgui.LauncherMenuButton android:id="@+id/install_jar_button" style="@style/LauncherMenuButton.Universal" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="INSTALAR MOD / JAR" android:background="@drawable/mikael_button"/>
 </LinearLayout>
 </ScrollView>
 <LinearLayout android:id="@+id/mikael_bottom" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="@dimen/_12sdp" android:paddingTop="@dimen/_6sdp" android:paddingBottom="@dimen/_9sdp" android:background="@color/background_bottom_bar" app:layout_constraintBottom_toBottomOf="parent">
@@ -1059,7 +1060,7 @@ PY
 
 python3 - <<'PY'
 from pathlib import Path
-p=Path(".github/workflows/build.yml")
+p=Path("../.github/workflows/build.yml")
 s=p.read_text()
 if "CURSEFORGE_API_KEY:" not in s:
     s=s.replace("      - name: Build APK\n","      - name: Build APK\n        env:\n          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}\n")
@@ -1135,7 +1136,7 @@ PY
 # Automatically match CurseForge content to the currently selected Minecraft version.
 python3 - <<'PY'
 from pathlib import Path
-p=Path("$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelContentLibraryFragment.java")
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelContentLibraryFragment.java")
 s=p.read_text()
 # Add reflection import.
 if "java.lang.reflect.Field" not in s:
