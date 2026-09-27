@@ -20,6 +20,12 @@ jobs:
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           git clone --recursive --depth 1 https://github.com/AngelAuraMC/Amethyst-Android.git launcher
 
+      - name: Apply Mikael Launcher GUI
+        working-directory: launcher
+        run: |
+          chmod +x ../patches/mikael_gui.sh
+          ../patches/mikael_gui.sh
+
       - name: Build APK
         working-directory: launcher
         run: |
