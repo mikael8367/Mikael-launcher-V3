@@ -438,7 +438,7 @@ needle='''view.setBackgroundColor(getResources().getColor(R.color.background_app
 if 'setPadding(0, 12, 0, 24)' not in s:
     s=s.replace(needle, needle+'''
         view.setPadding(0, 12, 0, 24);
-        view.setClipToPadding(false);''')
+''')
 p.write_text(s)
 PY
 grep -q '<string name="app_name"' "$RES/values/strings.xml" && sed -i 's#<string name="app_name"[^<]*>[^<]*</string>#<string name="app_name" translatable="false">Mikael Launcher V3</string>#' "$RES/values/strings.xml"
@@ -556,7 +556,6 @@ public class MainMenuFragment extends Fragment {
  @Override public void onViewCreated(@NonNull View v,@Nullable Bundle b){
   Button controls=v.findViewById(R.id.custom_control_button),settings=v.findViewById(R.id.settings_button),files=v.findViewById(R.id.open_files_button),logs=v.findViewById(R.id.share_logs_button),news=v.findViewById(R.id.news_button),discord=v.findViewById(R.id.discord_button),install=v.findViewById(R.id.install_jar_button),play=v.findViewById(R.id.play_button);
   ImageButton profile=v.findViewById(R.id.edit_profile_button); mVersionSpinner=v.findViewById(R.id.mc_version_spinner);
-  v.findViewById(R.id.forge_optifine_button).setOnClickListener(x->swapFragment(requireActivity(),MikaelForgeOptiFineFragment.class,MikaelForgeOptiFineFragment.TAG,null));
   controls.setOnClickListener(x->startActivity(new Intent(requireContext(),CustomControlsActivity.class)));
   settings.setOnClickListener(x->swapFragment(requireActivity(),LauncherPreferenceFragment.class,LauncherActivity.SETTING_FRAGMENT_TAG,null));
   news.setOnClickListener(x->openURL(requireActivity(),URL_HOME));
@@ -853,7 +852,7 @@ if "mikael_video_background" not in s:
   String hex=LauncherPreferences.DEFAULT_PREF.getString("mikael_accent_color","#4ADE80");
   int color;
   try{color=Color.parseColor(hex);}catch(Exception e){color=Color.rgb(74,222,128);}
-  int[] ids={R.id.custom_control_button,R.id.settings_button,R.id.open_files_button,R.id.share_logs_button,R.id.news_button,R.id.discord_button,R.id.install_jar_button,R.id.forge_optifine_button};
+  int[] ids={R.id.custom_control_button,R.id.settings_button,R.id.open_files_button,R.id.share_logs_button,R.id.news_button,R.id.discord_button,R.id.install_jar_button};
   for(int id:ids){View x=v.findViewById(id); if(x!=null) x.setBackgroundTintList(ColorStateList.valueOf(color));}
   View play=v.findViewById(R.id.play_button); if(play!=null) play.setBackgroundTintList(ColorStateList.valueOf(color));
  }
