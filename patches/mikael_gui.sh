@@ -4937,67 +4937,6 @@ if old not in s:
     raise SystemExit("download block not found")
 s=s.replace(old,new,1)
 
-# Add an explicit audit pass before restore maps are written.
-marker='''        writeRestoreMap(session,moved);'''
-if "private void advancedRepairAudit(" not in s:
-    extra='''    private void advancedRepairAudit(String text,String l,File dir,String mc,String loader,
-                                     List<ModInfo> mods,File session,List<String> moved,List<Action> actions){
-        // Duplicate mod IDs: only touch them when the crash log explicitly reports a duplicate.
-        if(hasAny(l,"duplicate mod","duplicate mods","already registered","found more than one file for mod")){
-            Map<String,List<ModInfo>> groups=new LinkedHashMap<>();
-            for(ModInfo m:mods) if(m.id!=null&&!m.id.isEmpty())
-                groups.computeIfAbsent(slugNorm(m.id),k->new ArrayList<>()).add(m);
-            for(List<ModInfo> g:groups.values()){
-                if(g.size()<2)continue;
-                ModInfo keep=g.get(0);
-                for(ModInfo m:g)if(compareVersions(m.version,keep.version)>0)keep=m;
-                for(ModInfo m:g)if(m!=keep && quarantine(m.file,session,"duplicate_mods",m.file.getName(),moved))
-                    actions.add(new Action("DUPLICADO: "+m.file.getName()+" isolado; mantido "+keep.file.getName(),false));
-            }
-        }
-
-        // If a loader mismatch is explicitly reported, prefer an already-installed compatible loader.
-        String expected=explicitLoaderFromLog(l);
-        if(expected!=null && !expected.equalsIgnoreCase(loader) && mc!=null &&
-                hasAny(l,"wrong loader","wrong modloader","incompatible mod","requires "+expected.toLowerCase(Locale.ROOT))){
-            String alt=findInstalledVersionForLoader(new File(dir,"versions"),mc,expected);
-            if(alt!=null){
-                try{
-                    LauncherProfiles.load();
-                    MinecraftProfile p=LauncherProfiles.getCurrentProfile();
-                    backupProfile(session,p.lastVersionId);
-                    p.lastVersionId=alt;
-                    LauncherProfiles.write();
-                    actions.add(new Action("MODLOADER RECONCILIADO: "+loader+" → "+expected+" ("+alt+")",false));
-                }catch(Exception ignored){}
-            }else{
-                actions.add(new Action("MODLOADER: "+expected+" necessário, mas não instalado; nada arriscado foi baixado",true));
-            }
-        }
-
-        // Regenerateable Mixin state can be quarantined when the failure is explicitly a Mixin crash.
-        if(hasAny(l,"mixinapplyerror","mixin transformation failed","invalid injection","injectionpoint")){
-            File mixin=new File(dir,".mixin.out");
-            if(mixin.exists() && quarantine(mixin,session,"mixin_cache",mixin.getName(),moved))
-                actions.add(new Action("MIXIN: .mixin.out isolado para regeneração",false));
-        }
-
-        // Corrupt JARs outside mods are quarantined so the normal dependency downloader can replace them.
-        if(hasAny(l,"invalid or corrupt jarfile","zip end header not found","zipexception","failed to load jar")){
-            Matcher m=JAR.matcher(text);
-            while(m.find()){
-                File f=findNamedFile(dir,m.group(1).trim());
-                if(f!=null && !isUnder(f,new File(dir,"mods"))){
-                    if(quarantine(f,session,"corrupt_files",f.getName(),moved))
-                        actions.add(new Action("ARQUIVO CORROMPIDO: "+f.getName()+" isolado para novo download",false));
-                    break;
-                }
-            }
-        }
-
-        // Remove only clearly partial download artifacts; worlds and user data are never touched.
-        if(hasAny(l,"download failed","failed to download","connection reset","sockettimeoutexception","unknownhostexception")){
-            int n=cleanTemps(dir);
 # BUILD SANITIZER: final Java-8/source compatibility pass.
 python3 - <<'PY'
 from pathlib import Path
