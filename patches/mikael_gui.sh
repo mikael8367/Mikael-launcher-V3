@@ -485,3 +485,43 @@ if "forge_optifine_button" not in s:
     s=s.replace(target, '<com.kdt.mcgui.LauncherMenuButton android:id="@+id/forge_optifine_button" style="@style/LauncherMenuButton.Universal" android:layout_width="match_parent" android:layout_height="@dimen/_44sdp" android:layout_marginTop="@dimen/_5sdp" android:text="FORGE + OPTIFINE" android:textSize="@dimen/_11ssp" android:background="@drawable/mikael_button"/>\\n</LinearLayout>\\n<com.kdt.mcgui.MineButton android:id="@+id/play_button"', 1)
     p.write_text(s)
 PY
+
+# Forge + OptiFine launcher screen.
+cat > "$JAVA" <<'EOF'
+package net.kdt.pojavlaunch.fragments;
+import android.os.Bundle;
+import android.view.View;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import net.kdt.pojavlaunch.R;
+import net.kdt.pojavlaunch.Tools;
+public class MikaelForgeOptiFineFragment extends Fragment {
+ public static final String TAG="MIKAEL_FORGE_OPTIFINE";
+ public MikaelForgeOptiFineFragment(){ super(R.layout.fragment_mikael_forge_optifine); }
+ @Override public void onViewCreated(@NonNull View v,@Nullable Bundle b){
+  v.findViewById(R.id.mfo_forge).setOnClickListener(x->Tools.swapFragment(requireActivity(),ForgeInstallFragment.class,ForgeInstallFragment.TAG,null));
+  v.findViewById(R.id.mfo_optifine).setOnClickListener(x->Tools.swapFragment(requireActivity(),OptiFineInstallFragment.class,OptiFineInstallFragment.TAG,null));
+  v.findViewById(R.id.mfo_back).setOnClickListener(x->Tools.swapFragment(requireActivity(),MainMenuFragment.class,MainMenuFragment.TAG,null));
+ }
+}
+EOF
+cat > "$RES/layout/fragment_mikael_forge_optifine.xml" <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="22dp" android:background="#0C0E12">
+ <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="FORGE + OPTIFINE" android:textColor="#FFFFFF" android:textSize="26sp" android:textStyle="bold"/>
+ <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Instale primeiro o Forge e depois o OptiFine compatível com a mesma versão do Minecraft." android:textColor="#9AA4B2" android:textSize="14sp"/>
+ <Button android:id="@+id/mfo_forge" android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="28dp" android:text="1 • INSTALAR FORGE" android:textAllCaps="false" android:background="@drawable/mikael_button"/>
+ <Button android:id="@+id/mfo_optifine" android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="10dp" android:text="2 • ADICIONAR OPTIFINE" android:textAllCaps="false" android:background="@drawable/mikael_button"/>
+ <Button android:id="@+id/mfo_back" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="18dp" android:text="VOLTAR" android:textAllCaps="false" android:background="@drawable/mikael_button"/>
+</LinearLayout>
+EOF
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java")
+s=p.read_text()
+needle='mVersionSpinner=v.findViewById(R.id.mc_version_spinner);'
+if 'forge_optifine_button' not in s:
+    s=s.replace(needle, needle+'\n  v.findViewById(R.id.forge_optifine_button).setOnClickListener(x->swapFragment(requireActivity(),MikaelForgeOptiFineFragment.class,MikaelForgeOptiFineFragment.TAG,null));')
+p.write_text(s)
+PY
