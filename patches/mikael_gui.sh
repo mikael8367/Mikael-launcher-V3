@@ -218,9 +218,9 @@ p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/SelectAuth
 s=p.read_text()
 if "button_ely_authentication" not in s:
     s=s.replace('Button mLocalButton = view.findViewById(R.id.button_local_authentication);',
-                'Button mLocalButton = view.findViewById(R.id.button_local_authentication);\\n        Button mElyButton = view.findViewById(R.id.button_ely_authentication);')
+                'Button mLocalButton = view.findViewById(R.id.button_local_authentication);\n        Button mElyButton = view.findViewById(R.id.button_ely_authentication);')
     s=s.replace('mLocalButton.setOnClickListener(v ->', 
-                'mElyButton.setOnClickListener(v -> Tools.swapFragment(requireActivity(), ElyLoginFragment.class, ElyLoginFragment.TAG, null));\\n        mLocalButton.setOnClickListener(v ->')
+                'mElyButton.setOnClickListener(v -> Tools.swapFragment(requireActivity(), ElyLoginFragment.class, ElyLoginFragment.TAG, null));\n        mLocalButton.setOnClickListener(v ->')
     s=s.replace('import net.kdt.pojavlaunch.R;', 'import net.kdt.pojavlaunch.R;')
     p.write_text(s)
 PY
@@ -1146,7 +1146,7 @@ if "String detectMinecraftVersion()" not in s:
    if(p==null) return null;
    String[] names={"lastVersionId","versionId","version","versionName","gameVersion"};
    for(String n:names){
-    try{ Field f=p.getClass().getDeclaredField(n); f.setAccessible(true); Object v=f.get(p); if(v!=null&&v.toString().matches("\\d+\\.\\d+(\\.\\d+)?([.-].*)?")) return v.toString(); }catch(Exception ignored){}
+    try{ Field f=p.getClass().getDeclaredField(n); f.setAccessible(true); Object v=f.get(p); if(v!=null&&v.toString().matches("[0-9]+[.][0-9]+([.][0-9]+)?([.-].*)?")) return v.toString(); }catch(Exception ignored){}
     try{ String m="get"+Character.toUpperCase(n.charAt(0))+n.substring(1); Method mm=p.getClass().getMethod(m); Object v=mm.invoke(p); if(v!=null&&v.toString().matches("\\d+\\.\\d+(\\.\\d+)?([.-].*)?")) return v.toString(); }catch(Exception ignored){}
    }
   }catch(Exception ignored){}
