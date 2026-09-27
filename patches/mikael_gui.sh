@@ -841,7 +841,7 @@ from pathlib import Path
 p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java")
 s=p.read_text()
 if "mikael_video_background" not in s:
-    s=s.replace("import android.content.Intent;", "import android.content.Intent;\nimport android.graphics.Color;\nimport android.content.res.ColorStateList;\nimport android.net.Uri;\nimport android.widget.VideoView;")
+    s=s.replace("import android.content.Intent;", "import android.content.Intent;"+chr(10)+"import android.graphics.Color;"+chr(10)+"import android.content.res.ColorStateList;"+chr(10)+"import android.net.Uri;"+chr(10)+"import android.widget.VideoView;")
     needle='ImageButton profile=v.findViewById(R.id.edit_profile_button); mVersionSpinner=v.findViewById(R.id.mc_version_spinner);'
     repl=needle+'''
   applyMikaelTheme(v);
@@ -1048,8 +1048,8 @@ from pathlib import Path
 p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java")
 s=p.read_text()
 if "mod_library_button" not in s:
-    s=s.replace('Button mInstallJarButton = view.findViewById(R.id.install_jar_button);','Button mInstallJarButton = view.findViewById(R.id.install_jar_button);\n        Button mModLibraryButton = view.findViewById(R.id.mod_library_button);')
-    s=s.replace('mCustomControlButton.setOnClickListener(v -> startActivity(new Intent(requireContext(), CustomControlsActivity.class));','mCustomControlButton.setOnClickListener(v -> startActivity(new Intent(requireContext(), CustomControlsActivity.class)));\n        mModLibraryButton.setOnClickListener(v -> Tools.swapFragment(requireActivity(), MikaelModLibraryFragment.class, MikaelModLibraryFragment.TAG, null));')
+    s=s.replace('Button mInstallJarButton = view.findViewById(R.id.install_jar_button);','Button mInstallJarButton = view.findViewById(R.id.install_jar_button);' + chr(10) + '        Button mModLibraryButton = view.findViewById(R.id.mod_library_button);')
+    s=s.replace('mCustomControlButton.setOnClickListener(v -> startActivity(new Intent(requireContext(), CustomControlsActivity.class));','mCustomControlButton.setOnClickListener(v -> startActivity(new Intent(requireContext(), CustomControlsActivity.class)));' + chr(10) + '        mModLibraryButton.setOnClickListener(v -> Tools.swapFragment(requireActivity(), MikaelModLibraryFragment.class, MikaelModLibraryFragment.TAG, null));')
     p.write_text(s)
 PY
 
@@ -1115,8 +1115,8 @@ python3 - <<'PY'
 from pathlib import Path
 p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java"); s=p.read_text()
 if "content_library_button" not in s:
- s=s.replace('Button mInstallJarButton = view.findViewById(R.id.install_jar_button);','Button mInstallJarButton = view.findViewById(R.id.install_jar_button);\n        Button mContentLibraryButton = view.findViewById(R.id.content_library_button);')
- s=s.replace('mCustomControlButton.setOnClickListener(v -> startActivity(new Intent(requireContext(), CustomControlsActivity.class));','mCustomControlButton.setOnClickListener(v -> startActivity(new Intent(requireContext(), CustomControlsActivity.class)));\n        mContentLibraryButton.setOnClickListener(v -> Tools.swapFragment(requireActivity(), MikaelContentLibraryFragment.class, MikaelContentLibraryFragment.TAG, null));')
+ s=s.replace('Button mInstallJarButton = view.findViewById(R.id.install_jar_button);','Button mInstallJarButton = view.findViewById(R.id.install_jar_button);' + chr(10) + '        Button mContentLibraryButton = view.findViewById(R.id.content_library_button);')
+ s=s.replace('mCustomControlButton.setOnClickListener(v -> startActivity(new Intent(requireContext(), CustomControlsActivity.class));','mCustomControlButton.setOnClickListener(v -> startActivity(new Intent(requireContext(), CustomControlsActivity.class)));' + chr(10) + '        mContentLibraryButton.setOnClickListener(v -> Tools.swapFragment(requireActivity(), MikaelContentLibraryFragment.class, MikaelContentLibraryFragment.TAG, null));')
  p.write_text(s)
 PY
 
@@ -1147,7 +1147,7 @@ if "String detectMinecraftVersion()" not in s:
    String[] names={"lastVersionId","versionId","version","versionName","gameVersion"};
    for(String n:names){
     try{ Field f=p.getClass().getDeclaredField(n); f.setAccessible(true); Object v=f.get(p); if(v!=null&&v.toString().matches("[0-9]+[.][0-9]+([.][0-9]+)?([.-].*)?")) return v.toString(); }catch(Exception ignored){}
-    try{ String m="get"+Character.toUpperCase(n.charAt(0))+n.substring(1); Method mm=p.getClass().getMethod(m); Object v=mm.invoke(p); if(v!=null&&v.toString().matches("\\d+\\.\\d+(\\.\\d+)?([.-].*)?")) return v.toString(); }catch(Exception ignored){}
+    try{ String m="get"+Character.toUpperCase(n.charAt(0))+n.substring(1); Method mm=p.getClass().getMethod(m); Object v=mm.invoke(p); if(v!=null&&v.toString().matches("[0-9]+[.][0-9]+([.][0-9]+)?([.-].*)?")) return v.toString(); }catch(Exception ignored){}
    }
   }catch(Exception ignored){}
   return null;
