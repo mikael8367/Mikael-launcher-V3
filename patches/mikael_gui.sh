@@ -798,6 +798,92 @@ if "mikael_video_background" not in s:
     p.write_text(s)
 PY
 
+# Fix OptiFine version matching and hide preview/snapshot entries.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/modloaders/OptiFineScraper.java")
+s=p.read_text()
+old='mMinecraftVersion = tagNode.getText().toString();'
+new='mMinecraftVersion = tagNode.getText().toString().replace("Minecraft ", "").trim();'
+if old in s:
+    s=s.replace(old,new,1)
+old2='mListInProgress.add(optiFineVersion);'
+new2='if (optiFineVersion.versionName != null && !optiFineVersion.versionName.toLowerCase(java.util.Locale.ROOT).contains("pre")) mListInProgress.add(optiFineVersion);'
+if old2 in s:
+    s=s.replace(old2,new2,1)
+p.write_text(s)
+
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/profiles/VersionListAdapter.java")
+s=p.read_text()
+start='''        List<JMinecraftVersionList.Version> releaseList = new FilteredSubList<>(versionList, item -> item.type.equals("release"));
+        List<JMinecraftVersionList.Version> snapshotList = new FilteredSubList<>(versionList, item -> item.type.equals("snapshot"));
+        List<JMinecraftVersionList.Version> betaList = new FilteredSubList<>(versionList, item -> item.type.equals("old_beta"));
+        List<JMinecraftVersionList.Version> alphaList = new FilteredSubList<>(versionList, item -> item.type.equals("old_alpha"));'''
+repl='''        // Mikael Launcher shows only stable numbered Minecraft releases.
+        // This excludes snapshots, pre-releases and April Fools/experimental IDs.
+        List<JMinecraftVersionList.Version> releaseList = new FilteredSubList<>(versionList,
+                item -> item != null && "release".equals(item.type)
+                        && item.id != null && item.id.matches("\\d+\\.\\d+(\\.\\d+)?"));'''
+if start in s:
+    s=s.replace(start,repl,1)
+old='''            mGroups = new String[]{
+                    ctx.getString(R.string.mcl_setting_veroption_release),
+                    ctx.getString(R.string.mcl_setting_veroption_snapshot),
+                    ctx.getString(R.string.mcl_setting_veroption_oldbeta),
+                    ctx.getString(R.string.mcl_setting_veroption_oldalpha)
+            };
+            mData = new List[]{ releaseList, snapshotList, betaList, alphaList};
+            mSnapshotListPosition = 1;'''
+new='''            mGroups = new String[]{
+                    ctx.getString(R.string.mcl_setting_veroption_release)
+            };
+            mData = new List[]{ releaseList};
+            mSnapshotListPosition = -1;'''
+if old in s: s=s.replace(old,new,1)
+old='''            mGroups = new String[]{
+                    ctx.getString(R.string.mcl_setting_veroption_installed),
+                    ctx.getString(R.string.mcl_setting_veroption_release),
+                    ctx.getString(R.string.mcl_setting_veroption_snapshot),
+                    ctx.getString(R.string.mcl_setting_veroption_oldbeta),
+                    ctx.getString(R.string.mcl_setting_veroption_oldalpha)
+            };
+            mData = new List[]{Arrays.asList(mInstalledVersions), releaseList, snapshotList, betaList, alphaList};
+            mSnapshotListPosition = 2;'''
+new='''            mGroups = new String[]{
+                    ctx.getString(R.string.mcl_setting_veroption_installed),
+                    ctx.getString(R.string.mcl_setting_veroption_release)
+            };
+            mData = new List[]{Arrays.asList(mInstalledVersions), releaseList};
+            mSnapshotListPosition = -1;'''
+if old in s: s=s.replace(old,new,1)
+p.write_text(s)
+PY
+
+# Harden the Forge + OptiFine screen: stable Minecraft releases only,
+# normalized OptiFine matching, and no fragment lifecycle crashes.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelForgeOptiFineFragment.java")
+s=p.read_text()
+old='''if(table!=null && table.versions!=null) for(JMinecraftVersionList.Version x:table.versions) if(x.id!=null && !games.contains(x.id)) games.add(x.id);'''
+new='''if(table!=null && table.versions!=null) for(JMinecraftVersionList.Version x:table.versions)
+            if(x!=null && "release".equals(x.type) && x.id!=null && x.id.matches("\\d+\\.\\d+(\\.\\d+)?") && !games.contains(x.id)) games.add(x.id);'''
+if old in s: s=s.replace(old,new,1)
+s=s.replace('''if(!games.isEmpty()) requireActivity().runOnUiThread(()->refreshLoaders(games.get(game.getSelectedItemPosition())));''',
+'''android.app.Activity activity=getActivity();
+                if(activity!=null && !games.isEmpty()) activity.runOnUiThread(()->{if(isAdded()) refreshLoaders(games.get(game.getSelectedItemPosition()));});''')
+s=s.replace('''}catch(Exception e){ requireActivity().runOnUiThread(()->status.setText("Não foi possível carregar Forge/OptiFine."));}''',
+''' }catch(Exception e){ android.app.Activity activity=getActivity(); if(activity!=null) activity.runOnUiThread(()->{if(isAdded()) status.setText("Não foi possível carregar Forge/OptiFine.");});}''')
+s=s.replace('''private void fail(String x){requireActivity().runOnUiThread(()->status.setText(x));}''',
+'''private void fail(String x){android.app.Activity activity=getActivity(); if(activity!=null) activity.runOnUiThread(()->{if(isAdded()) status.setText(x);});}''')
+s=s.replace('''},requireActivity()).run();''','''},getActivity()).run();''')
+# Guard against failed OptiFine page parsing.
+s=s.replace('''if(selectedOF==null){status.setText("OptiFine selecionado não foi encontrado.");return;}''',
+'''if(ofAll==null || ofAll.minecraftVersions==null){status.setText("Lista do OptiFine indisponível.");return;}
+        if(selectedOF==null){status.setText("OptiFine selecionado não foi encontrado.");return;}''')
+p.write_text(s)
+PY
+
 # Custom Forge + OptiFine + Minecraft version selector.
 cat > "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelForgeOptiFineFragment.java" <<'EOF'
 package net.kdt.pojavlaunch.fragments;
