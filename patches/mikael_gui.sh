@@ -2097,3 +2097,44 @@ if old not in s:
     raise SystemExit("ProfileTypeSelectFragment tryInstall block not found")
 p.write_text(s.replace(old,new,1))
 PY
+
+# FINAL FIX: make the profile creation buttons use Mikael green instead of the upstream purple.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/ProfileTypeSelectFragment.java")
+s=p.read_text()
+s=s.replace('import android.view.View;\n', 'import android.graphics.Color;\nimport android.graphics.drawable.GradientDrawable;\nimport android.view.View;\nimport android.widget.Button;\n')
+if 'private void styleMikaelProfileButtons(View view)' not in s:
+    marker='''        super.onViewCreated(view, savedInstanceState);
+'''
+    method='''        super.onViewCreated(view, savedInstanceState);
+        styleMikaelProfileButtons(view);
+'''
+    s=s.replace(marker,method,1)
+    marker='''    private void tryInstall(Class<? extends Fragment> fragmentClass, String tag){'''
+    methods='''    private void styleMikaelProfileButtons(View view) {
+        int[] ids = {
+                R.id.vanilla_profile, R.id.optifine_profile,
+                R.id.modded_profile_fabric, R.id.modded_profile_quilt,
+                R.id.modded_profile_forge, R.id.modded_profile_neoforge,
+                R.id.modded_profile_modpack, R.id.modded_profile_lwjgl3ify,
+                R.id.modded_profile_bta
+        };
+        for (int id : ids) {
+            View v = view.findViewById(id);
+            if (v instanceof Button) {
+                GradientDrawable bg = new GradientDrawable();
+                bg.setColor(Color.parseColor("#4ADE80"));
+                bg.setCornerRadius(10f);
+                ((Button) v).setBackground(bg);
+                ((Button) v).setTextColor(Color.parseColor("#07110B"));
+            }
+        }
+    }
+
+'''
+    if marker not in s:
+        raise SystemExit("ProfileTypeSelect tryInstall marker not found")
+    s=s.replace(marker,methods+marker,1)
+p.write_text(s)
+PY
