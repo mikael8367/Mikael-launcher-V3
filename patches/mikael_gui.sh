@@ -3911,3 +3911,23 @@ public class MikaelCrashResolverFragment extends Fragment {
     }
 }
 EOF
+
+
+# Final source compatibility cleanup. These are textual fixes only and are intentionally
+# applied after every feature patch so generated Java remains Java 8 compatible.
+python3 - <<'PY'
+from pathlib import Path
+
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/prefs/screens/LauncherPreferenceFragment.java")
+if p.exists():
+    x=p.read_text()
+    x=x.replace('"""','"')
+    p.write_text(x)
+
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/profiles/VersionListAdapter.java")
+if p.exists():
+    x=p.read_text()
+    x=x.replace('item.id.matches("\\d+\\.\\d+(\\.\\d+)?" )','item.id.matches("\\\\d+\\\\.\\\\d+(\\\\.\\\\d+)?")')
+    x=x.replace('item.id.matches("\\d+\\.\\d+(\\.\\d+)?")','item.id.matches("\\\\d+\\\\.\\\\d+(\\\\.\\\\d+)?")')
+    p.write_text(x)
+PY
