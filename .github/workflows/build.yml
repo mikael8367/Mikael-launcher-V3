@@ -12,14 +12,18 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout complete launcher source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Check vendored source
+      - name: Prepare launcher
         run: |
-          test -f launcher/gradlew
-          test -d launcher/app_pojavlauncher
-          echo "Building source directly from launcher/ in this repository."
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git clone --recursive --depth 1 https://github.com/AngelAuraMC/Amethyst-Android.git launcher
+
+      - name: Apply Mikael source
+        working-directory: launcher
+        run: |
+          chmod +x "$GITHUB_WORKSPACE/patches/mikael_gui.sh"
+          "$GITHUB_WORKSPACE/patches/mikael_gui.sh"
 
       - name: Build APK
         working-directory: launcher
@@ -30,8 +34,7 @@ jobs:
           ./gradlew :app_pojavlauncher:assembleDebug --no-daemon --stacktrace
 
       - name: Verify APK
-        run: |
-          test -n "$(find launcher/app_pojavlauncher/build/outputs/apk/debug -name '*.apk' -print -quit)"
+        run: test -n "$(find launcher/app_pojavlauncher/build/outputs/apk/debug -name '*.apk' -print -quit)"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -46,13 +49,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           latest=$(gh release list --limit 100 --json tagName --jq '.[].tagName' | grep '^v' | sed 's/^v//' | sort -V | tail -n1)
-          if [ -z "$latest" ]; then
-            next="1.0.0"
-          else
-            IFS=. read -r major minor patch <<< "$latest"
-            next="${major}.${minor}.$((patch + 1))"
-          fi
+          if [ -z "$latest" ]; then next="1.0.0"; else IFS=. read -r major minor patch <<< "$latest"; next="${major}.${minor}.$((patch + 1))"; fi
           apk=$(find launcher/app_pojavlauncher/build/outputs/apk/debug -name '*.apk' -print -quit)
           mkdir -p release
           cp "$apk" "release/Mikael-Launcher-V${next}.apk"
-          gh release create "v${next}" "release/Mikael-Launcher-V${next}.apk"             --title "Mikael Launcher V${next}"             --generate-notes
+          gh release create "v${next}" "release/Mikael-Launcher-V${next}.apk" --title "Mikael Launcher V${next}" --generate-notes
