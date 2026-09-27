@@ -26,9 +26,9 @@ jobs:
 
       - name: Apply current Mikael source changes
         run: |
-          chmod +x patches/mikael_gui.sh
+          chmod +x "$GITHUB_WORKSPACE/patches/mikael_gui.sh"
           cd /tmp/amethyst
-          ../workspace/patches/mikael_gui.sh
+          "$GITHUB_WORKSPACE/patches/mikael_gui.sh"
         env:
           CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
 
