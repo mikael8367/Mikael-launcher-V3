@@ -1012,7 +1012,7 @@ public class MikaelForgeOptiFineFragment extends Fragment {
                 }
                 public void onDataNotAvailable(){fail("Forge não disponível");}
                 public void onDownloadError(Exception e){fail("Erro no Forge: "+e.getMessage());}
-                private void fail(String x){requireActivity().runOnUiThread(()->status.setText(x));}
+                private void fail(String x){android.app.Activity activity=getActivity(); if(activity!=null) activity.runOnUiThread(()->{if(isAdded()) status.setText(x);});}
             },fv).run();
         }).start();
     }
