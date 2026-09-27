@@ -28,6 +28,27 @@ EOF
 cat > "$RES/drawable/ic_mikael_profile.xml" <<'EOF'
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="28dp" android:height="28dp" android:viewportWidth="28" android:viewportHeight="28"><path android:fillColor="#FFFFFF" android:pathData="M14,3a5,5 0,1 1,0 10a5,5 0,0 1,0 -10M5,25c0,-5 4,-8 9,-8s9,3 9,8z"/></vector>
 EOF
+cat > "$RES/drawable/mikael_hero.xml" <<'EOF'
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient android:startColor="#141A22" android:endColor="#0F131A" android:angle="0"/>
+    <corners android:radius="20dp"/>
+    <stroke android:width="1dp" android:color="#26303D"/>
+</shape>
+EOF
+cat > "$RES/drawable/mikael_bottom.xml" <<'EOF'
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#11151C"/>
+    <corners android:topLeftRadius="20dp" android:topRightRadius="20dp"/>
+    <stroke android:width="1dp" android:color="#202733"/>
+</shape>
+EOF
+cat > "$RES/drawable/mikael_profile_bg.xml" <<'EOF'
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#151922"/>
+    <corners android:radius="15dp"/>
+    <stroke android:width="1dp" android:color="#4ADE80"/>
+</shape>
+EOF
 cat > "$RES/drawable/mikael_play.xml" <<'EOF'
 <shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#4ADE80"/><corners android:radius="16dp"/><padding android:left="10dp" android:top="6dp" android:right="10dp" android:bottom="6dp"/></shape>
 EOF
