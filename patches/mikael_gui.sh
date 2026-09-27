@@ -3989,6 +3989,17 @@ public class LauncherPreferenceFragment extends PreferenceFragmentCompat impleme
         }
     }
 
+    protected Preference requirePreference(String key) {
+        Preference preference = findPreference(key);
+        if (preference == null) throw new IllegalStateException("Preference not found: " + key);
+        return preference;
+    }
+
+    protected <T extends Preference> T requirePreference(String key, Class<T> type) {
+        Preference preference = requirePreference(key);
+        return type.cast(preference);
+    }
+
     private void wireMikaelPreferences() {
         Preference accent = findPreference("mikael_accent_color");
         if (accent != null) {
