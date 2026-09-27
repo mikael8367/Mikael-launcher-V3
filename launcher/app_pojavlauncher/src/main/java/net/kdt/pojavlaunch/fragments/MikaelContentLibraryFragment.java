@@ -30,7 +30,7 @@ public class MikaelContentLibraryFragment extends Fragment {
    if(p==null) return null;
    String[] names={"lastVersionId","versionId","version","versionName","gameVersion"};
    for(String n:names){
-    try{ Field f=p.getClass().getDeclaredField(n); f.setAccessible(true); Object v=f.get(p); if(v!=null&&v.toString().matches("\d+\.\d+(\.\d+)?([.-].*)?")) return v.toString(); }catch(Exception ignored){}
+    try{ Field f=p.getClass().getDeclaredField(n); f.setAccessible(true); Object v=f.get(p); if(v!=null&&v.toString().matches("[0-9]+[.][0-9]+([.][0-9]+)?([.-].*)?")) return v.toString(); }catch(Exception ignored){}
     try{ String m="get"+Character.toUpperCase(n.charAt(0))+n.substring(1); Method mm=p.getClass().getMethod(m); Object v=mm.invoke(p); if(v!=null&&v.toString().matches("\d+\.\d+(\.\d+)?([.-].*)?")) return v.toString(); }catch(Exception ignored){}
    }
   }catch(Exception ignored){}
