@@ -1168,3 +1168,5 @@ if "String detectMinecraftVersion()" not in s:
     s=s.replace(marker,method+marker)
 p.write_text(s)
 PY
+
+# Source vendoring trigger: complete launcher source is maintained in launcher/.
