@@ -55,7 +55,7 @@ public class MikaelCrashCheckerFragment extends Fragment {
     private static final Pattern MOD_FILE =
             Pattern.compile("(?i)(?:Mod File|mod file|jar|filename|file)[:=]\\s*([^\\n]*?)(?:\\.jar)(?:[^\\n]*)");
     private static final Pattern FABRIC_MOD =
-            Pattern.compile("(?i)(?:fabric.mod.json|modid|id)[:=]\\s*[\\"']?([a-z0-9_.-]{2,80})");
+            Pattern.compile("(?i)(?:fabric.mod.json|modid|id)[:=]\\s*([a-z0-9_.-]{2,80})");
     private static final Pattern REQUIRED =
             Pattern.compile("(?i)(?:depends on|requires|requires minecraft|requires java|dependency)[:\\s]+([^\\n]{2,250})");
     private static final Pattern MC_VERSION =
@@ -476,7 +476,7 @@ public class MikaelCrashCheckerFragment extends Fragment {
             int i=t.indexOf(k);
             if(i>=0){
                 String snippet=t.substring(Math.max(0,i-260),Math.min(t.length(),i+500)).replace('\n',' ');
-                Matcher pm=Pattern.compile("(?i)([a-z0-9_.-]{2,80}\.jar)").matcher(snippet);
+                Matcher pm=Pattern.compile("(?i)([a-z0-9_.-]{2,80}\\.jar)").matcher(snippet);
                 if(pm.find())return pm.group(1);
             }
         }

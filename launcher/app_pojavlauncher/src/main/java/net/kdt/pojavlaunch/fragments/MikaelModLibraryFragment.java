@@ -114,10 +114,7 @@ public class MikaelModLibraryFragment extends Fragment {
 
     private void confirmInstall(ModItem m){
         new AlertDialog.Builder(requireContext()).setTitle(m.name)
-                .setMessage(m.summary+"
-
-Minecraft: "+(detectMinecraftVersion()==null?"automático":detectMinecraftVersion())+"
-Dependências obrigatórias: automáticas")
+                .setMessage(m.summary+"\\n\\nMinecraft: "+(detectMinecraftVersion()==null?"automático":detectMinecraftVersion())+"\\nDependências obrigatórias: automáticas")
                 .setNegativeButton("CANCELAR",null)
                 .setPositiveButton("INSTALAR", (d,w)->installProject(m.modId))
                 .show();
