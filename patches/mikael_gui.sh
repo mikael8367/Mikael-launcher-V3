@@ -2074,3 +2074,26 @@ if bad not in s:
     raise SystemExit("Modrinth versions block not found")
 p.write_text(s.replace(bad,good,1))
 PY
+
+# FINAL FIX: profile creation/installers must not require a Microsoft account.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/ProfileTypeSelectFragment.java")
+s=p.read_text()
+s=s.replace('import static net.kdt.pojavlaunch.Tools.hasNoOnlineProfileDialog;\n','')
+s=s.replace('import static net.kdt.pojavlaunch.Tools.hasOnlineProfile;\n','')
+old='''    private void tryInstall(Class<? extends Fragment> fragmentClass, String tag){
+        if(!hasOnlineProfile()){
+            hasNoOnlineProfileDialog(requireActivity());
+        } else {
+            Tools.swapFragment(requireActivity(), fragmentClass, tag, null);
+        }
+    }'''
+new='''    private void tryInstall(Class<? extends Fragment> fragmentClass, String tag){
+        // Installing/creating a local game profile does not require a Microsoft account.
+        Tools.swapFragment(requireActivity(), fragmentClass, tag, null);
+    }'''
+if old not in s:
+    raise SystemExit("ProfileTypeSelectFragment tryInstall block not found")
+p.write_text(s.replace(old,new,1))
+PY
