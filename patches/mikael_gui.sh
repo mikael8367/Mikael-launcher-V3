@@ -446,3 +446,18 @@ if 'setPadding(0, 12, 0, 24)' not in s:
 p.write_text(s)
 PY
 grep -q '<string name="app_name"' "$RES/values/strings.xml" && sed -i 's#<string name="app_name"[^<]*>[^<]*</string>#<string name="app_name" translatable="false">Mikael Launcher V3</string>#' "$RES/values/strings.xml"
+
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/SelectAuthFragment.java")
+s=p.read_text()
+s=s.replace('import static net.kdt.pojavlaunch.Tools.hasNoOnlineProfileDialog;\\n\\n','')
+s=s.replace('mLocalButton.setOnClickListener(v -> hasNoOnlineProfileDialog(requireActivity(), () -> Tools.swapFragment(requireActivity(), LocalLoginFragment.class, LocalLoginFragment.TAG, null)));','mLocalButton.setOnClickListener(v -> Tools.swapFragment(requireActivity(), LocalLoginFragment.class, LocalLoginFragment.TAG, null));')
+p.write_text(s)
+
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/LocalLoginFragment.java")
+s=p.read_text()
+s=s.replace('import static net.kdt.pojavlaunch.Tools.hasOnlineProfile;\\n\\n','')
+s=s.replace('        // This is overkill but meh\\n        if (!hasOnlineProfile()){\\n            Tools.swapFragment(requireActivity(), MainMenuFragment.class, MainMenuFragment.TAG, null);\\n        }\\n','')
+p.write_text(s)
+PY
