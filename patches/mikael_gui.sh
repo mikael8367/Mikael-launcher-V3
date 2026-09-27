@@ -892,3 +892,176 @@ if s.count("<resources") and s.count("</resources>"):
         s=s[:end] + styles + "\n</resources>\n"
         p.write_text(s)
 PY
+
+# CurseForge mod library.
+cat > "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelModLibraryFragment.java" <<'EOF'
+package net.kdt.pojavlaunch.fragments;
+
+import android.os.Bundle;
+import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ListView;
+import android.widget.TextView;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.fragment.app.Fragment;
+import net.kdt.pojavlaunch.R;
+import net.kdt.pojavlaunch.Tools;
+import net.kdt.pojavlaunch.prefs.LauncherPreferences;
+import net.kdt.pojavlaunch.value.launcherprofiles.LauncherProfiles;
+import net.kdt.pojavlaunch.value.launcherprofiles.MinecraftProfile;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.List;
+
+public class MikaelModLibraryFragment extends Fragment {
+    public static final String TAG = "MIKAEL_MOD_LIBRARY";
+    private final List<ModItem> mods = new ArrayList<>();
+    private ArrayAdapter<String> adapter;
+    private TextView status;
+    private EditText search;
+
+    public MikaelModLibraryFragment() { super(R.layout.fragment_mikael_mod_library); }
+
+    @Override public void onViewCreated(@NonNull View v, @Nullable Bundle b) {
+        search=v.findViewById(R.id.mod_search);
+        status=v.findViewById(R.id.mod_status);
+        ListView list=v.findViewById(R.id.mod_list);
+        adapter=new ArrayAdapter<>(requireContext(),android.R.layout.simple_list_item_1,new ArrayList<>());
+        list.setAdapter(adapter);
+        v.findViewById(R.id.mod_search_button).setOnClickListener(x->searchMods());
+        v.findViewById(R.id.mod_back).setOnClickListener(x->Tools.swapFragment(requireActivity(),MainMenuFragment.class,MainMenuFragment.TAG,null));
+        list.setOnItemClickListener((p,x,pos,id)->confirmInstall(mods.get(pos)));
+        searchMods();
+    }
+
+    private void searchMods() {
+        String q=search.getText().toString().trim();
+        status.setText("Pesquisando mods no CurseForge...");
+        new Thread(()->{
+            try {
+                String u="https://api.curseforge.com/v1/mods/search?gameId=432&classId=6&pageSize=20";
+                if(!q.isEmpty()) u+="&searchFilter="+URLEncoder.encode(q,"UTF-8");
+                JSONArray data=getJson(u).optJSONArray("data");
+                List<ModItem> found=new ArrayList<>();
+                if(data!=null) for(int i=0;i<data.length();i++){
+                    JSONObject m=data.getJSONObject(i), f=m.optJSONArray("latestFiles")!=null?m.getJSONArray("latestFiles").optJSONObject(0):null;
+                    if(f!=null) found.add(new ModItem(m.optString("id"),m.optString("name","Mod"),m.optString("summary",""),f.optString("id"),f.optString("displayName",f.optString("fileName","Arquivo"))));
+                }
+                requireActivity().runOnUiThread(()->{
+                    mods.clear(); mods.addAll(found); adapter.clear();
+                    for(ModItem m:mods) adapter.add(m.name+"\n"+m.fileName);
+                    adapter.notifyDataSetChanged(); status.setText(found.size()+" mods encontrados • toque para instalar");
+                });
+            } catch(Exception e){ requireActivity().runOnUiThread(()->status.setText("Erro: "+e.getMessage())); }
+        }).start();
+    }
+
+    private void confirmInstall(ModItem m) {
+        new AlertDialog.Builder(requireContext()).setTitle(m.name)
+            .setMessage(m.summary+"\n\nArquivo: "+m.fileName)
+            .setNegativeButton("CANCELAR",null).setPositiveButton("BAIXAR",(d,w)->downloadMod(m)).show();
+    }
+
+    private void downloadMod(ModItem m) {
+        status.setText("Baixando "+m.name+"...");
+        new Thread(()->{
+            try {
+                String url=getJson("https://api.curseforge.com/v1/mods/"+m.modId+"/files/"+m.fileId+"/download-url").optString("data","");
+                if(url.isEmpty()) throw new Exception("CurseForge não forneceu o link.");
+                File dir=getCurrentProfileDirectory(), modsDir=new File(dir,"mods");
+                if(!modsDir.exists()&&!modsDir.mkdirs()) throw new Exception("Não foi possível criar a pasta mods.");
+                File out=new File(modsDir,m.fileName.replaceAll("[\\\\/:*?\"<>|]","_"));
+                HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection();
+                c.setConnectTimeout(15000); c.setReadTimeout(30000);
+                try(InputStream in=c.getInputStream();FileOutputStream o=new FileOutputStream(out)){
+                    byte[] b=new byte[8192]; int n; while((n=in.read(b))!=-1)o.write(b,0,n);
+                }
+                requireActivity().runOnUiThread(()->status.setText("Instalado em mods/: "+out.getName()));
+            }catch(Exception e){requireActivity().runOnUiThread(()->status.setText("Falha: "+e.getMessage()));}
+        }).start();
+    }
+
+    private JSONObject getJson(String u)throws Exception{
+        HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();
+        c.setRequestMethod("GET"); c.setConnectTimeout(15000); c.setReadTimeout(20000);
+        c.setRequestProperty("Accept","application/json");
+        c.setRequestProperty("x-api-key",getString(R.string.curseforge_api_key));
+        int code=c.getResponseCode(); InputStream in=code>=400?c.getErrorStream():c.getInputStream();
+        java.io.ByteArrayOutputStream o=new java.io.ByteArrayOutputStream(); byte[] b=new byte[8192]; int n;
+        while((n=in.read(b))!=-1)o.write(b,0,n);
+        if(code>=400)throw new Exception("HTTP "+code);
+        return new JSONObject(o.toString("UTF-8"));
+    }
+
+    private File getCurrentProfileDirectory(){
+        String cur=LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE,null);
+        if(cur==null||cur.trim().isEmpty())return new File(Tools.DIR_GAME_NEW);
+        LauncherProfiles.load(); MinecraftProfile p=LauncherProfiles.mainProfileJson.profiles.get(cur);
+        return p==null?new File(Tools.DIR_GAME_NEW):Tools.getGameDirPath(p);
+    }
+
+    private static class ModItem{
+        final String modId,name,summary,fileId,fileName;
+        ModItem(String a,String b,String c,String d,String e){modId=a;name=b;summary=c;fileId=d;fileName=e;}
+    }
+}
+EOF
+
+cat > "$RES/layout/fragment_mikael_mod_library.xml" <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="16dp" android:background="#0C0E12">
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="BIBLIOTECA DE MODS" android:textColor="#FFFFFF" android:textSize="24sp" android:textStyle="bold"/>
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Mods do CurseForge para baixar direto no launcher" android:textColor="#9AA4B2"/>
+<LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="14dp" android:orientation="horizontal">
+<EditText android:id="@+id/mod_search" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:hint="Pesquisar mod..." android:textColor="#FFFFFF" android:hintTextColor="#7B8491" android:singleLine="true"/>
+<Button android:id="@+id/mod_search_button" android:layout_width="90dp" android:layout_height="match_parent" android:text="BUSCAR" android:background="@drawable/mikael_button"/>
+</LinearLayout>
+<TextView android:id="@+id/mod_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="10dp" android:text="Carregando..." android:textColor="#4ADE80"/>
+<ListView android:id="@+id/mod_list" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:divider="#222833" android:dividerHeight="1dp"/>
+<Button android:id="@+id/mod_back" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp" android:text="VOLTAR" android:background="@drawable/mikael_button"/>
+</LinearLayout>
+EOF
+
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/res/layout/fragment_launcher.xml")
+s=p.read_text()
+if "mod_library_button" not in s:
+    marker='<com.kdt.mcgui.LauncherMenuButton android:id="@+id/install_jar_button"'
+    pos=s.find(marker)
+    end=s.find('/>',pos)
+    if pos>=0 and end>=0:
+        button='<com.kdt.mcgui.LauncherMenuButton android:id="@+id/mod_library_button" style="@style/LauncherMenuButton.Universal" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="BIBLIOTECA DE MODS" android:background="@drawable/mikael_button"/>'
+        s=s[:end+2]+"\n"+button+s[end+2:]
+    p.write_text(s)
+PY
+
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java")
+s=p.read_text()
+if "mod_library_button" not in s:
+    s=s.replace('Button mInstallJarButton = view.findViewById(R.id.install_jar_button);','Button mInstallJarButton = view.findViewById(R.id.install_jar_button);\n        Button mModLibraryButton = view.findViewById(R.id.mod_library_button);')
+    s=s.replace('mCustomControlButton.setOnClickListener(v -> startActivity(new Intent(requireContext(), CustomControlsActivity.class));','mCustomControlButton.setOnClickListener(v -> startActivity(new Intent(requireContext(), CustomControlsActivity.class)));\n        mModLibraryButton.setOnClickListener(v -> Tools.swapFragment(requireActivity(), MikaelModLibraryFragment.class, MikaelModLibraryFragment.TAG, null));')
+    p.write_text(s)
+PY
+
+python3 - <<'PY'
+from pathlib import Path
+p=Path(".github/workflows/build.yml")
+s=p.read_text()
+if "CURSEFORGE_API_KEY:" not in s:
+    s=s.replace("      - name: Build APK\n","      - name: Build APK\n        env:\n          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}\n")
+    p.write_text(s)
+PY
