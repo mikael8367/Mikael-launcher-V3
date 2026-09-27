@@ -3,7 +3,7 @@
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:orientation="vertical" android:background="#0C0E12" android:padding="14dp">
     <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:text="RESOLVER AUTOMÁTICO PRO MAX" android:textColor="#FFFFFF" android:textSize="23sp" android:textStyle="bold"/>
+        android:text="RESOLVER AUTOMÁTICO PRO++" android:textColor="#FFFFFF" android:textSize="23sp" android:textStyle="bold"/>
     <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:text="Diagnóstico + reparo transacional de mods, dependências, modloader, RAM, Java, arquivos, GPU e downloads."

@@ -61,11 +61,11 @@ public class MikaelCrashResolverFragment extends Fragment {
     private String lastSession="";
 
     private static final Pattern MC=Pattern.compile("(?i)(?:minecraft(?: version)?|game version|version id)[^0-9]{0,32}(\\d+\\.\\d+(?:\\.\\d+)?)");
-    private static final Pattern JAR=Pattern.compile("(?i)([A-Za-z0-9_.()\-+ ]{2,180}\\.jar)");
+    private static final Pattern JAR=Pattern.compile("(?i)([A-Za-z0-9_.()+ -]{2,180}\.jar)");
     private static final Pattern DEP=Pattern.compile("(?i)(?:missing dependency|could not find required mod|depends on|requires(?: a dependency)?)[^:\n]*[:\\s]+([A-Za-z0-9_.:\-/]{3,100})");
     private static final Pattern JAVA_CLASS=Pattern.compile("(?i)class file version\\s+(\\d+)");
-    private static final Pattern OUTDATED=Pattern.compile("(?i)([A-Za-z0-9_.\-]+)[^\\n]{0,100}(?:is outdated|outdated|update to)");
-    private static final Pattern BAD_FILE=Pattern.compile("(?i)([A-Za-z0-9_.()\-+ ]{2,180}\\.(?:jar|zip|json|toml))");
+    private static final Pattern OUTDATED=Pattern.compile("(?i)([A-Za-z0-9_.-]+)[^\n]{0,100}(?:is outdated|outdated|update to)");
+    private static final Pattern BAD_FILE=Pattern.compile("(?i)([A-Za-z0-9_.()+ -]{2,180}\.(?:jar|zip|json|toml))");
 
     private static final class ModInfo {
         File file;
@@ -294,112 +294,6 @@ public class MikaelCrashResolverFragment extends Fragment {
             if(!md.exists()&&md.mkdirs())actions.add(new Action("PASTA RECRIADA: mods",false));
         }
 
-    private void advancedRepairAudit(String text,String l,File dir,String mc,String loader,
-                                     List<ModInfo> mods,File session,List<String> moved,List<Action> actions){
-        // Duplicate mod IDs: only touch them when the crash log explicitly reports a duplicate.
-        if(hasAny(l,"duplicate mod","duplicate mods","already registered","found more than one file for mod")){
-            Map<String,List<ModInfo>> groups=new LinkedHashMap<>();
-            for(ModInfo m:mods) if(m.id!=null&&!m.id.isEmpty())
-                groups.computeIfAbsent(slugNorm(m.id),k->new ArrayList<>()).add(m);
-            for(List<ModInfo> g:groups.values()){
-                if(g.size()<2)continue;
-                ModInfo keep=g.get(0);
-                for(ModInfo m:g)if(compareVersions(m.version,keep.version)>0)keep=m;
-                for(ModInfo m:g)if(m!=keep && quarantine(m.file,session,"duplicate_mods",m.file.getName(),moved))
-                    actions.add(new Action("DUPLICADO: "+m.file.getName()+" isolado; mantido "+keep.file.getName(),false));
-            }
-        }
-
-        // If a loader mismatch is explicitly reported, prefer an already-installed compatible loader.
-        String expected=explicitLoaderFromLog(l);
-        if(expected!=null && !expected.equalsIgnoreCase(loader) && mc!=null &&
-                hasAny(l,"wrong loader","wrong modloader","incompatible mod","requires "+expected.toLowerCase(Locale.ROOT))){
-            String alt=findInstalledVersionForLoader(new File(dir,"versions"),mc,expected);
-            if(alt!=null){
-                try{
-                    LauncherProfiles.load();
-                    MinecraftProfile p=LauncherProfiles.getCurrentProfile();
-                    backupProfile(session,p.lastVersionId);
-                    p.lastVersionId=alt;
-                    LauncherProfiles.write();
-                    actions.add(new Action("MODLOADER RECONCILIADO: "+loader+" → "+expected+" ("+alt+")",false));
-                }catch(Exception ignored){}
-            }else{
-                actions.add(new Action("MODLOADER: "+expected+" necessário, mas não instalado; nada arriscado foi baixado",true));
-            }
-        }
-
-        // Regenerateable Mixin state can be quarantined when the failure is explicitly a Mixin crash.
-        if(hasAny(l,"mixinapplyerror","mixin transformation failed","invalid injection","injectionpoint")){
-            File mixin=new File(dir,".mixin.out");
-            if(mixin.exists() && quarantine(mixin,session,"mixin_cache",mixin.getName(),moved))
-                actions.add(new Action("MIXIN: .mixin.out isolado para regeneração",false));
-        }
-
-        // Corrupt JARs outside mods are quarantined so the normal dependency downloader can replace them.
-        if(hasAny(l,"invalid or corrupt jarfile","zip end header not found","zipexception","failed to load jar")){
-            Matcher m=JAR.matcher(text);
-            while(m.find()){
-                File f=findNamedFile(dir,m.group(1).trim());
-                if(f!=null && !isUnder(f,new File(dir,"mods"))){
-                    if(quarantine(f,session,"corrupt_files",f.getName(),moved))
-                        actions.add(new Action("ARQUIVO CORROMPIDO: "+f.getName()+" isolado para novo download",false));
-                    break;
-                }
-            }
-        }
-
-        // Remove only clearly partial download artifacts; worlds and user data are never touched.
-        if(hasAny(l,"download failed","failed to download","connection reset","sockettimeoutexception","unknownhostexception")){
-            int n=cleanTemps(dir);
-            if(n>0)actions.add(new Action("DOWNLOAD: "+n+" arquivos parciais removidos",false));
-        }
-    }
-
-    private int compareVersions(String a,String b){
-        String[] x=(a==null?"":a).split("[^0-9]+");
-        String[] y=(b==null?"":b).split("[^0-9]+");
-        int n=Math.max(x.length,y.length);
-        for(int i=0;i<n;i++){
-            int xi=i<x.length&&!x[i].isEmpty()?parseIntSafe(x[i]):0;
-            int yi=i<y.length&&!y[i].isEmpty()?parseIntSafe(y[i]):0;
-            if(xi!=yi)return Integer.compare(xi,yi);
-        }
-        return 0;
-    }
-
-    private int parseIntSafe(String s){try{return Integer.parseInt(s);}catch(Exception e){return 0;}}
-
-    private String explicitLoaderFromLog(String l){
-        if(hasAny(l,"requires fabric loader","requires fabricloader"))return "Fabric";
-        if(hasAny(l,"requires quilt loader"))return "Quilt";
-        if(hasAny(l,"requires neoforge","net.neoforged"))return "NeoForge";
-        if(hasAny(l,"requires forge","net.minecraftforge"))return "Forge";
-        return null;
-    }
-
-    private File findNamedFile(File root,String name){
-        if(root==null||name==null||name.isEmpty())return null;
-        ArrayList<File> stack=new ArrayList<>();stack.add(root);int n=0;
-        while(!stack.isEmpty()&&n++<3000){
-            File d=stack.remove(stack.size()-1);if(d==null||!d.exists())continue;
-            if(d.isFile()){if(d.getName().equalsIgnoreCase(name))return d;continue;}
-            File[] fs=d.listFiles();if(fs==null)continue;
-            for(File f:fs){
-                if(f.isFile()&&f.getName().equalsIgnoreCase(name))return f;
-                if(f.isDirectory()&&!f.getName().equalsIgnoreCase("saves"))stack.add(f);
-            }
-        }
-        return null;
-    }
-
-    private boolean isUnder(File f,File parent){
-        try{return f.getCanonicalPath().startsWith(parent.getCanonicalPath()+File.separator);}
-        catch(Exception e){return false;}
-    }
-
-        advancedRepairAudit(text,l,dir,mc,loader,mods,session,moved,actions);
-
         writeRestoreMap(session,moved);
         writeCreatedMap(session,created);
         saveText(session,"actions.txt",actionText(actions));
@@ -575,23 +469,16 @@ public class MikaelCrashResolverFragment extends Fragment {
     }
 
     private void download(String url,File out)throws Exception{
-        File tmp=new File(out.getAbsolutePath()+".mikael.part");
-        if(tmp.exists())tmp.delete();
         HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection();
-        c.setRequestProperty("User-Agent","Mikael-Launcher-V3/AutoResolver-PRO-MAX");
+        c.setRequestProperty("User-Agent","Mikael-Launcher-V3/AutoResolver-PRO");
         c.setConnectTimeout(15000);c.setReadTimeout(90000);
         int code=c.getResponseCode();
         if(code>=400)throw new Exception("Download HTTP "+code);
-        int expected=c.getContentLength();
-        try(InputStream in=c.getInputStream();FileOutputStream o=new FileOutputStream(tmp)){
+        try(InputStream in=c.getInputStream();FileOutputStream o=new FileOutputStream(out)){
             byte[] b=new byte[16384];int n;while((n=in.read(b))!=-1)o.write(b,0,n);
         }
-        if(tmp.length()<1024 || (expected>0 && tmp.length()<expected)){
-            tmp.delete();throw new Exception("Download incompleto: "+out.getName());
-        }
-        if(!isReadableJar(tmp)){tmp.delete();throw new Exception("JAR baixado inválido: "+out.getName());}
-        if(out.exists())out.delete();
-        if(!tmp.renameTo(out)){tmp.delete();throw new Exception("Não foi possível finalizar "+out.getName());}
+        if(out.length()<1024)throw new Exception("Arquivo baixado parece inválido: "+out.getName());
+        if(!isReadableJar(out)){out.delete();throw new Exception("JAR baixado inválido: "+out.getName());}
     }
 
     private List<ModInfo> scanMods(File dir){
