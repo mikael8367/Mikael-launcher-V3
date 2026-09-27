@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Build safety: optional Modrinth compatibility patches must never abort the entire patch.
 ROOT=app_pojavlauncher/src/main
 RES=$ROOT/res
 JAVA=$ROOT/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java
