@@ -371,4 +371,78 @@ public class MikaelFpsBoosterFragment extends PreferenceFragmentCompat {
     }
 }
 EOF
+
+# Completely custom settings visual system: no upstream settings row appearance.
+mkdir -p "$RES/layout" "$RES/drawable" "$RES/values"
+cat > "$RES/drawable/mikael_pref_row.xml" <<'EOF'
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true"><shape><solid android:color="#252B35"/><corners android:radius="16dp"/><stroke android:width="1dp" android:color="#4ADE80"/></shape></item>
+    <item><shape><solid android:color="#171B22"/><corners android:radius="16dp"/><stroke android:width="1dp" android:color="#29313D"/></shape></item>
+</selector>
+EOF
+cat > "$RES/drawable/mikael_pref_category.xml" <<'EOF'
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#0C0E12"/>
+</shape>
+EOF
+cat > "$RES/layout/mikael_preference.xml" <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:minHeight="76dp" android:layout_marginStart="12dp" android:layout_marginEnd="12dp"
+    android:layout_marginTop="6dp" android:layout_marginBottom="6dp"
+    android:paddingStart="18dp" android:paddingEnd="12dp" android:paddingTop="10dp" android:paddingBottom="10dp"
+    android:gravity="center_vertical" android:orientation="horizontal"
+    android:background="@drawable/mikael_pref_row">
+    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+        android:layout_weight="1" android:orientation="vertical">
+        <TextView android:id="@android:id/title" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+        <TextView android:id="@android:id/summary" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="3dp" android:textColor="#8F9AAA" android:textSize="13sp"/>
+    </LinearLayout>
+    <FrameLayout android:id="@android:id/widget_frame" android:layout_width="wrap_content"
+        android:layout_height="match_parent" android:minWidth="52dp" android:gravity="center"/>
+</LinearLayout>
+EOF
+
+cat >> "$RES/values/styles.xml" <<'EOF'
+<style name="MikaelPreferenceTheme" parent="@style/PreferenceThemeOverlay.v14.Material">
+    <item name="preferenceStyle">@style/MikaelPreferenceStyle</item>
+    <item name="switchPreferenceStyle">@style/MikaelSwitchPreferenceStyle</item>
+    <item name="switchPreferenceCompatStyle">@style/MikaelSwitchPreferenceStyle</item>
+    <item name="seekBarPreferenceStyle">@style/MikaelPreferenceStyle</item>
+    <item name="preferenceCategoryStyle">@style/MikaelPreferenceCategoryStyle</item>
+</style>
+<style name="MikaelPreferenceStyle" parent="@style/Preference.Material">
+    <item name="android:layout">@layout/mikael_preference</item>
+</style>
+<style name="MikaelSwitchPreferenceStyle" parent="@style/Preference.SwitchPreference">
+    <item name="android:layout">@layout/mikael_preference</item>
+</style>
+<style name="MikaelPreferenceCategoryStyle" parent="@style/Preference.Category.Material">
+    <item name="android:layout">@layout/mikael_preference_category</item>
+</style>
+EOF
+
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/res/values/styles.xml")
+s=p.read_text()
+s=s.replace('<item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>',
+            '<item name="preferenceTheme">@style/MikaelPreferenceTheme</item>')
+p.write_text(s)
+PY
+
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/prefs/screens/LauncherPreferenceFragment.java")
+s=p.read_text()
+needle='''view.setBackgroundColor(getResources().getColor(R.color.background_app));'''
+if 'setPadding(0, 12, 0, 24)' not in s:
+    s=s.replace(needle, needle+'''
+        view.setPadding(0, 12, 0, 24);
+        view.setClipToPadding(false);''')
+p.write_text(s)
+PY
 grep -q '<string name="app_name"' "$RES/values/strings.xml" && sed -i 's#<string name="app_name"[^<]*>[^<]*</string>#<string name="app_name" translatable="false">Mikael Launcher V3</string>#' "$RES/values/strings.xml"
