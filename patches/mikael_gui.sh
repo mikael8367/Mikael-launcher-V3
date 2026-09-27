@@ -877,3 +877,18 @@ if "mikael_video_background" not in s:
                 ' @Override public void onResume(){super.onResume();if(mVersionSpinner!=null)mVersionSpinner.reloadProfiles(); View root=getView(); if(root!=null){applyMikaelTheme(root); setupMikaelVideo(root);}}')
     p.write_text(s)
 PY
+
+
+# Fix styles.xml: the upstream file has a <resources> root, so Mikael styles must be inside it.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/res/values/styles.xml")
+s=p.read_text()
+if s.count("<resources") and s.count("</resources>"):
+    end=s.rfind("</resources>")
+    tail=s[end+len("</resources>"):]
+    if "<style name=\"MikaelPreferenceTheme\"" in tail:
+        styles=tail
+        s=s[:end] + styles + "\n</resources>\n"
+        p.write_text(s)
+PY
