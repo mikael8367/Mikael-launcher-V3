@@ -1597,3 +1597,68 @@ p.write_text(x)
 </ScrollView>
 ''')
 PY
+
+# Mikael RAM monitor: show current available RAM in Java settings.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/res/xml/pref_java.xml")
+s=p.read_text()
+if 'mikael_ram_available' not in s:
+    marker='''        <SwitchPreference
+            android:defaultValue="false"
+            android:key="disable_autojre_select"'''
+    pref='''        <Preference
+            android:key="mikael_ram_available"
+            android:persistent="false"
+            android:title="RAM disponível"
+            android:summary="Calculando..." />\n\n'''
+    if marker not in s:
+        raise SystemExit("pref_java marker not found")
+    s=s.replace(marker,pref+marker,1)
+    p.write_text(s)
+
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/prefs/screens/LauncherPreferenceJavaFragment.java")
+s=p.read_text()
+s=s.replace('import android.os.Bundle;\n', 'import android.app.ActivityManager;\nimport android.content.Context;\nimport android.os.Bundle;\n')
+if 'private Preference mMikaelRamPreference;' not in s:
+    s=s.replace('    private SwitchPreference mSwitchAutoJRE;\n',
+                '    private SwitchPreference mSwitchAutoJRE;\n    private Preference mMikaelRamPreference;\n')
+if 'private void updateMikaelRamInfo()' not in s:
+    marker='''    @Override
+    public void onCreatePreferences(Bundle b, String str) {'''
+    method='''    @Override
+    public void onResume() {
+        super.onResume();
+        updateMikaelRamInfo();
+    }
+
+    private void updateMikaelRamInfo() {
+        if (mMikaelRamPreference == null || getContext() == null) return;
+        ActivityManager am = (ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE);
+        if (am == null) return;
+        ActivityManager.MemoryInfo info = new ActivityManager.MemoryInfo();
+        am.getMemoryInfo(info);
+        long availableMb = info.availMem / (1024L * 1024L);
+        long totalMb = info.totalMem / (1024L * 1024L);
+        long usedMb = Math.max(0L, totalMb - availableMb);
+        mMikaelRamPreference.setSummary("Disponível agora: " + availableMb + " MB\\n" +
+                "Em uso pelo sistema: " + usedMb + " MB\\n" +
+                "Total: " + totalMb + " MB");
+    }
+
+'''
+    if marker not in s:
+        raise SystemExit("Java onCreatePreferences marker not found")
+    s=s.replace(marker,method+marker,1)
+if 'mMikaelRamPreference = findPreference("mikael_ram_available");' not in s:
+    marker='''        CustomSeekBarPreference memorySeekbar = requirePreference("allocation",
+                CustomSeekBarPreference.class);'''
+    repl='''        mMikaelRamPreference = findPreference("mikael_ram_available");
+
+        CustomSeekBarPreference memorySeekbar = requirePreference("allocation",
+                CustomSeekBarPreference.class);'''
+    if marker not in s:
+        raise SystemExit("memory seekbar marker not found")
+    s=s.replace(marker,repl,1)
+p.write_text(s)
+PY
