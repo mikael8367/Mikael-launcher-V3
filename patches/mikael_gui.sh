@@ -2481,7 +2481,7 @@ public class MikaelCrashCheckerFragment extends Fragment {
 
         // Increase confidence when multiple independent signatures agree.
         Set<String> tokens=new HashSet<>();
-        Matcher m=Pattern.compile("(?i)([a-z0-9_$.]+(?:mod|fabric|forge|optifine|sodium)[a-z0-9_$.\-]*)").matcher(text);
+        Matcher m=Pattern.compile("(?i)([a-z0-9_$.]+(?:mod|fabric|forge|optifine|sodium)[a-z0-9_$.\\-]*)").matcher(text);
         while(m.find() && tokens.size()<16) tokens.add(m.group(1));
         for(Finding f:fs) if(f.score>0 && !tokens.isEmpty() && f.id.equals("missing_mod")) f.score++;
         return fs;
@@ -3387,7 +3387,7 @@ public class MikaelCrashResolverFragment extends Fragment {
     private Button resolve,undo;
 
     private static final Pattern MC=Pattern.compile("(?i)(?:minecraft(?: version)?|game version|version id)[^0-9]{0,28}(\\d+\\.\\d+(?:\\.\\d+)?)");
-    private static final Pattern JAR=Pattern.compile("(?i)([A-Za-z0-9_.()\\-+ ]{2,140}\\\.jar)");
+    private static final Pattern JAR=Pattern.compile("(?i)([A-Za-z0-9_.()\\\-+ ]{2,140}\\\.jar)");
     private static final Pattern DEP=Pattern.compile("(?i)(?:missing dependency|depends on|requires)[:\\s]+([A-Za-z0-9_.:-]{3,80})");
 
     public MikaelCrashResolverFragment(){super(R.layout.fragment_mikael_crash_resolver);}
@@ -4053,11 +4053,11 @@ public class MikaelCrashResolverFragment extends Fragment {
     private String lastSession="";
 
     private static final Pattern MC=Pattern.compile("(?i)(?:minecraft(?: version)?|game version|version id)[^0-9]{0,32}(\\d+\\.\\d+(?:\\.\\d+)?)");
-    private static final Pattern JAR=Pattern.compile("(?i)([A-Za-z0-9_.()\-+ ]{2,180}\\.jar)");
-    private static final Pattern DEP=Pattern.compile("(?i)(?:missing dependency|could not find required mod|depends on|requires(?: a dependency)?)[^:\n]*[:\\s]+([A-Za-z0-9_.:\-/]{3,100})");
+    private static final Pattern JAR=Pattern.compile("(?i)([A-Za-z0-9_.()\\-+ ]{2,180}\\.jar)");
+    private static final Pattern DEP=Pattern.compile("(?i)(?:missing dependency|could not find required mod|depends on|requires(?: a dependency)?)[^:\n]*[:\\s]+([A-Za-z0-9_.:\\-/]{3,100})");
     private static final Pattern JAVA_CLASS=Pattern.compile("(?i)class file version\\s+(\\d+)");
-    private static final Pattern OUTDATED=Pattern.compile("(?i)([A-Za-z0-9_.\-]+)[^\\n]{0,100}(?:is outdated|outdated|update to)");
-    private static final Pattern BAD_FILE=Pattern.compile("(?i)([A-Za-z0-9_.()\-+ ]{2,180}\\.(?:jar|zip|json|toml))");
+    private static final Pattern OUTDATED=Pattern.compile("(?i)([A-Za-z0-9_.\\-]+)[^\\n]{0,100}(?:is outdated|outdated|update to)");
+    private static final Pattern BAD_FILE=Pattern.compile("(?i)([A-Za-z0-9_.()\\-+ ]{2,180}\\.(?:jar|zip|json|toml))");
 
     private static final class ModInfo {
         File file;
