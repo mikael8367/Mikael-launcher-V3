@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd launcher
 ROOT=app_pojavlauncher/src/main
 RES=$ROOT/res
 JAVA=$ROOT/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java
@@ -1060,7 +1059,7 @@ PY
 
 python3 - <<'PY'
 from pathlib import Path
-p=Path("../.github/workflows/build.yml")
+p=Path(".github/workflows/build.yml")
 s=p.read_text()
 if "CURSEFORGE_API_KEY:" not in s:
     s=s.replace("      - name: Build APK\n","      - name: Build APK\n        env:\n          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}\n")
