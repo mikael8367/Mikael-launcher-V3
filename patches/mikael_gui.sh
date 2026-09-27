@@ -848,7 +848,7 @@ public class MikaelForgeOptiFineFragment extends Fragment {
         new Thread(()->{
             try{
                 List<String> f=ForgeUtils.downloadForgeVersions();
-                requireActivity().runOnUiThread(()->{forgeAll.clear(); if(f!=null) forgeAll.addAll(f); if(!games.isEmpty()) refreshLoaders(games.get(0));});
+                android.app.Activity a=getActivity(); if(a==null)return; a.runOnUiThread(()->{forgeAll.clear(); if(f!=null) forgeAll.addAll(f); if(!games.isEmpty()) refreshLoaders(games.get(0));});
                 ofAll=OptiFineUtils.downloadOptiFineVersions();
                 if(!games.isEmpty()) requireActivity().runOnUiThread(()->refreshLoaders(games.get(game.getSelectedItemPosition())));
             }catch(Exception e){ requireActivity().runOnUiThread(()->status.setText("Não foi possível carregar Forge/OptiFine."));}
@@ -892,7 +892,7 @@ public class MikaelForgeOptiFineFragment extends Fragment {
                 public void onDownloadFinished(File forgeJar){
                     new OptiFineDownloadTask(of,new ModloaderDownloadListener(){
                         public void onDownloadFinished(File ofJar){
-                            requireActivity().runOnUiThread(()->{
+                            android.app.Activity a=getActivity(); if(a==null)return; a.runOnUiThread(()->{
                                 status.setText("Downloads concluídos. Abrindo instalador do Forge...");
                                 Intent i=new Intent(requireContext(),JavaGUILauncherActivity.class);
                                 ForgeUtils.addAutoInstallArgs(i,forgeJar,true);
@@ -1063,12 +1063,12 @@ public class MikaelModLibraryFragment extends Fragment {
                     JSONObject m=data.getJSONObject(i), f=m.optJSONArray("latestFiles")!=null?m.getJSONArray("latestFiles").optJSONObject(0):null;
                     if(f!=null) found.add(new ModItem(m.optString("id"),m.optString("name","Mod"),m.optString("summary",""),f.optString("id"),f.optString("displayName",f.optString("fileName","Arquivo"))));
                 }
-                requireActivity().runOnUiThread(()->{
+                android.app.Activity a=getActivity(); if(a==null)return; a.runOnUiThread(()->{
                     mods.clear(); mods.addAll(found); adapter.clear();
                     for(ModItem m:mods) adapter.add(m.name+"\n"+m.fileName);
                     adapter.notifyDataSetChanged(); status.setText(found.size()+" mods encontrados • toque para instalar");
                 });
-            } catch(Exception e){ requireActivity().runOnUiThread(()->status.setText("Erro: "+e.getMessage())); }
+            } catch(Exception e){ android.app.Activity a=getActivity(); if(a!=null)a.runOnUiThread(()->status.setText("Erro: "+e.getMessage())); }
         }).start();
     }
 
@@ -1093,7 +1093,7 @@ public class MikaelModLibraryFragment extends Fragment {
                     byte[] b=new byte[8192]; int n; while((n=in.read(b))!=-1)o.write(b,0,n);
                 }
                 requireActivity().runOnUiThread(()->status.setText("Instalado em mods/: "+out.getName()));
-            }catch(Exception e){requireActivity().runOnUiThread(()->status.setText("Falha: "+e.getMessage()));}
+            }catch(Exception e){android.app.Activity a=getActivity(); if(a!=null)a.runOnUiThread(()->status.setText("Falha: "+e.getMessage()));}
         }).start();
     }
 
@@ -1180,7 +1180,7 @@ public class MikaelContentLibraryFragment extends Fragment {
  void load(){int t=type.getSelectedItemPosition(); String q=search.getText().toString().trim(); status.setText("Pesquisando..."); new Thread(()->{try{
   String classId=t==0?"6":t==1?"12":t==2?"6552":"17"; String u="https://api.curseforge.com/v1/mods/search?gameId=432&classId="+classId+"&pageSize=30"; if(!q.isEmpty())u+="&searchFilter="+URLEncoder.encode(q,"UTF-8");
   JSONArray a=json(u).optJSONArray("data"); List<Item> out=new ArrayList<>(); if(a!=null)for(int i=0;i<a.length();i++){JSONObject m=a.getJSONObject(i); JSONArray fs=m.optJSONArray("latestFiles"); JSONObject f=fs!=null&&fs.length()>0?fs.optJSONObject(0):null; if(f!=null)out.add(new Item(m.optString("id"),m.optString("name","Item"),m.optString("summary",""),f.optString("id"),f.optString("displayName",f.optString("fileName","download"))));}
-  requireActivity().runOnUiThread(()->{items.clear();items.addAll(out);adapter.clear();for(Item x:items)adapter.add(x.name+"\n"+x.file);adapter.notifyDataSetChanged();status.setText(out.size()+" resultados");});
+  android.app.Activity a=getActivity(); if(a==null)return; a.runOnUiThread(()->{items.clear();items.addAll(out);adapter.clear();for(Item x:items)adapter.add(x.name+"\n"+x.file);adapter.notifyDataSetChanged();status.setText(out.size()+" resultados");});
  }catch(Exception e){requireActivity().runOnUiThread(()->status.setText("Erro: "+e.getMessage()));}}).start();}
  void confirm(Item x){new AlertDialog.Builder(requireContext()).setTitle(x.name).setMessage(x.summary+"\n\n"+x.file).setNegativeButton("CANCELAR",null).setPositiveButton("BAIXAR",(d,w)->download(x)).show();}
  void download(Item x){status.setText("Baixando...");new Thread(()->{try{
@@ -1189,7 +1189,7 @@ public class MikaelContentLibraryFragment extends Fragment {
   String fn=x.file.replaceAll("[\\\\/:*?\"<>|]","_"); File out=new File(dir,fn); HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setConnectTimeout(15000);c.setReadTimeout(60000);
   try(InputStream in=c.getInputStream();FileOutputStream o=new FileOutputStream(out)){byte[] b=new byte[8192];int n;while((n=in.read(b))!=-1)o.write(b,0,n);}
   requireActivity().runOnUiThread(()->status.setText("Instalado em "+folder+"/: "+out.getName()));
- }catch(Exception e){requireActivity().runOnUiThread(()->status.setText("Falha: "+e.getMessage()));}}).start();}
+ }catch(Exception e){android.app.Activity a=getActivity(); if(a!=null)a.runOnUiThread(()->status.setText("Falha: "+e.getMessage()));}}).start();}
  JSONObject json(String u)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setRequestProperty("Accept","application/json");c.setRequestProperty("x-api-key",getString(R.string.curseforge_api_key));int code=c.getResponseCode();InputStream in=code>=400?c.getErrorStream():c.getInputStream();ByteArrayOutputStream o=new ByteArrayOutputStream();byte[] b=new byte[8192];int n;while((n=in.read(b))!=-1)o.write(b,0,n);if(code>=400)throw new Exception("HTTP "+code);return new JSONObject(o.toString("UTF-8"));}
  File getDir(){String cur=LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE,null);if(cur==null||cur.trim().isEmpty())return new File(Tools.DIR_GAME_NEW);LauncherProfiles.load();MinecraftProfile p=LauncherProfiles.mainProfileJson.profiles.get(cur);return p==null?new File(Tools.DIR_GAME_NEW):Tools.getGameDirPath(p);}
  static class Item{String modId,name,summary,fileId,file;Item(String a,String b,String c,String d,String e){modId=a;name=b;summary=c;fileId=d;file=e;}}
