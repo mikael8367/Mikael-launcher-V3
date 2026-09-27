@@ -838,3 +838,42 @@ if 'mikael_video_background' not in s:
     s=s.replace('<ScrollView ', '<VideoView android:id="@+id/mikael_video_background" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone" />\n<View android:layout_width="match_parent" android:layout_height="match_parent" android:background="#99000000" />\n<ScrollView ',1)
     p.write_text(s)
 PY
+
+# Apply selected Mikael accent and video background on the home screen.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java")
+s=p.read_text()
+if "mikael_video_background" not in s:
+    s=s.replace("import android.content.Intent;", "import android.content.Intent;\nimport android.graphics.Color;\nimport android.content.res.ColorStateList;\nimport android.net.Uri;\nimport android.widget.VideoView;")
+    needle='ImageButton profile=v.findViewById(R.id.edit_profile_button); mVersionSpinner=v.findViewById(R.id.mc_version_spinner);'
+    repl=needle+'''
+  applyMikaelTheme(v);
+  setupMikaelVideo(v);'''
+    s=s.replace(needle,repl)
+    marker=' private File getCurrentProfileDirectory()'
+    methods=''' private void applyMikaelTheme(View v){
+  String hex=LauncherPreferences.DEFAULT_PREF.getString("mikael_accent_color","#4ADE80");
+  int color;
+  try{color=Color.parseColor(hex);}catch(Exception e){color=Color.rgb(74,222,128);}
+  int[] ids={R.id.custom_control_button,R.id.settings_button,R.id.open_files_button,R.id.share_logs_button,R.id.news_button,R.id.discord_button,R.id.install_jar_button,R.id.forge_optifine_button};
+  for(int id:ids){View x=v.findViewById(id); if(x!=null) x.setBackgroundTintList(ColorStateList.valueOf(color));}
+  View play=v.findViewById(R.id.play_button); if(play!=null) play.setBackgroundTintList(ColorStateList.valueOf(color));
+ }
+ private void setupMikaelVideo(View v){
+  VideoView video=v.findViewById(R.id.mikael_video_background);
+  String uri=LauncherPreferences.DEFAULT_PREF.getString("mikael_video_uri","");
+  boolean enabled=LauncherPreferences.DEFAULT_PREF.getBoolean("mikael_video_enabled",false);
+  if(video==null || !enabled || uri==null || uri.isEmpty()) return;
+  try{
+   video.setVideoURI(Uri.parse(uri));
+   video.setOnPreparedListener(mp->{mp.setLooping(true);mp.setVolume(0f,0f);video.start();});
+   video.setVisibility(View.VISIBLE);
+  }catch(Exception ignored){video.setVisibility(View.GONE);}
+ }
+'''
+    s=s.replace(marker,methods+marker)
+    s=s.replace(' @Override public void onResume(){super.onResume();if(mVersionSpinner!=null)mVersionSpinner.reloadProfiles();}',
+                ' @Override public void onResume(){super.onResume();if(mVersionSpinner!=null)mVersionSpinner.reloadProfiles(); View root=getView(); if(root!=null){applyMikaelTheme(root); setupMikaelVideo(root);}}')
+    p.write_text(s)
+PY
