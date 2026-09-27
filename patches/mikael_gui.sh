@@ -3714,29 +3714,6 @@ cat > "$RES/layout/fragment_mikael_crash_resolver.xml" <<'EOF'
 </LinearLayout>
 EOF
 
-# BUILD SANITIZER: final Java-8/source compatibility pass.
-python3 - <<'PY'
-from pathlib import Path
-import re
-
-p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelCrashCheckerFragment.java")
-if p.exists():
-    x=p.read_text()
-    x=re.sub(r'private static final Pattern FABRIC_MOD =.*?;', 'private static final Pattern FABRIC_MOD = Pattern.compile("(?i)(?:fabric\\\\.mod\\\\.json|modid|id)[:=]\\\\s*[\\\\\\\"\\\']?([a-z0-9_.-]{2,80})");', x, count=1)
-    x=re.sub(r'Matcher pm=Pattern\\.compile\(".*?"\)', 'Matcher pm=Pattern.compile("(?i)([a-z0-9_.-]{2,80}\\\\.jar)")', x, count=1)
-    p.write_text(x)
-
-p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelModLibraryFragment.java")
-if p.exists():
-    x=p.read_text()
-    x=re.sub(r'(?s)        new AlertDialog\\.Builder\\(requireContext\\)\\.setTitle\\(m\\.name\\).*?\\.setNegativeButton\\("CANCELAR",null\\)', '        new AlertDialog.Builder(requireContext()).setTitle(m.name)\n                .setMessage(m.summary+"\\\\n\\\\nMinecraft: "+(detectMinecraftVersion()==null?"automático":detectMinecraftVersion())+"\\\\nDependências obrigatórias: automáticas")\n                .setNegativeButton("CANCELAR",null)', x, count=1)
-    p.write_text(x)
-
-p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/prefs/screens/LauncherPreferenceFragment.java")
-if p.exists():
-    p.write_text(p.read_text().replace('"""','"'))
-PY
-
 # FINAL BUILD-SAFETY OVERRIDE: replace the experimental resolver with a compile-safe implementation.
 cat > "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelCrashResolverFragment.java" <<'EOF'
 package net.kdt.pojavlaunch.fragments;
