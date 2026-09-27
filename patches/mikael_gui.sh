@@ -865,20 +865,23 @@ python3 - <<'PY'
 from pathlib import Path
 p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelForgeOptiFineFragment.java")
 s=p.read_text()
-old='''if(table!=null && table.versions!=null) for(JMinecraftVersionList.Version x:table.versions) if(x.id!=null && !games.contains(x.id)) games.add(x.id);'''
+old='''if(table!=null && table.versions!=null) for(JMinecraftVersionList.Version x:table.versions)
+             if(x!=null && "release".equals(x.type) && x.id!=null && x.id.matches("\\d+\\.\\d+(\\.\\d+)?") && !games.contains(x.id)) games.add(x.id);'''
 new='''if(table!=null && table.versions!=null) for(JMinecraftVersionList.Version x:table.versions)
             if(x!=null && "release".equals(x.type) && x.id!=null && x.id.matches("\\d+\\.\\d+(\\.\\d+)?") && !games.contains(x.id)) games.add(x.id);'''
 if old in s: s=s.replace(old,new,1)
-s=s.replace('''if(!games.isEmpty()) requireActivity().runOnUiThread(()->refreshLoaders(games.get(game.getSelectedItemPosition())));''',
+s=s.replace('''android.app.Activity activity=getActivity();
+                 if(activity!=null && !games.isEmpty()) activity.runOnUiThread(()->{if(isAdded()) refreshLoaders(games.get(game.getSelectedItemPosition()));});''',
 '''android.app.Activity activity=getActivity();
                 if(activity!=null && !games.isEmpty()) activity.runOnUiThread(()->{if(isAdded()) refreshLoaders(games.get(game.getSelectedItemPosition()));});''')
-s=s.replace('''}catch(Exception e){ requireActivity().runOnUiThread(()->status.setText("Não foi possível carregar Forge/OptiFine."));}''',
+s=s.replace('''}catch(Exception e){ android.app.Activity activity=getActivity(); if(activity!=null) activity.runOnUiThread(()->{if(isAdded()) status.setText("Não foi possível carregar Forge/OptiFine.");});}''',
 ''' }catch(Exception e){ android.app.Activity activity=getActivity(); if(activity!=null) activity.runOnUiThread(()->{if(isAdded()) status.setText("Não foi possível carregar Forge/OptiFine.");});}''')
-s=s.replace('''private void fail(String x){requireActivity().runOnUiThread(()->status.setText(x));}''',
+s=s.replace('''private void fail(String x){android.app.Activity activity=getActivity(); if(activity!=null) activity.runOnUiThread(()->{if(isAdded()) status.setText(x);});}''',
 '''private void fail(String x){android.app.Activity activity=getActivity(); if(activity!=null) activity.runOnUiThread(()->{if(isAdded()) status.setText(x);});}''')
 s=s.replace('''},requireActivity()).run();''','''},getActivity()).run();''')
 # Guard against failed OptiFine page parsing.
-s=s.replace('''if(selectedOF==null){status.setText("OptiFine selecionado não foi encontrado.");return;}''',
+s=s.replace('''if(ofAll==null || ofAll.minecraftVersions==null){status.setText("Lista do OptiFine indisponível.");return;}
+        if(selectedOF==null){status.setText("OptiFine selecionado não foi encontrado.");return;}''',
 '''if(ofAll==null || ofAll.minecraftVersions==null){status.setText("Lista do OptiFine indisponível.");return;}
         if(selectedOF==null){status.setText("OptiFine selecionado não foi encontrado.");return;}''')
 p.write_text(s)
