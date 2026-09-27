@@ -47,7 +47,8 @@ public class MikaelForgeOptiFineFragment extends Fragment {
         Button install=v.findViewById(R.id.mfo_install), back=v.findViewById(R.id.mfo_back);
         List<String> games=new ArrayList<>();
         JMinecraftVersionList table=(JMinecraftVersionList)ExtraCore.getValue(ExtraConstants.RELEASE_TABLE);
-        if(table!=null && table.versions!=null) for(JMinecraftVersionList.Version x:table.versions) if(x.id!=null && !games.contains(x.id)) games.add(x.id);
+        if(table!=null && table.versions!=null) for(JMinecraftVersionList.Version x:table.versions)
+             if(x!=null && "release".equals(x.type) && x.id!=null && x.id.matches("\\d+\\.\\d+(\\.\\d+)?") && !games.contains(x.id)) games.add(x.id);
         fill(game,games);
         game.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
             public void onNothingSelected(android.widget.AdapterView<?> p){}
@@ -58,8 +59,9 @@ public class MikaelForgeOptiFineFragment extends Fragment {
                 List<String> f=ForgeUtils.downloadForgeVersions();
                 android.app.Activity a=getActivity(); if(a==null)return; a.runOnUiThread(()->{forgeAll.clear(); if(f!=null) forgeAll.addAll(f); if(!games.isEmpty()) refreshLoaders(games.get(0));});
                 ofAll=OptiFineUtils.downloadOptiFineVersions();
-                if(!games.isEmpty()) requireActivity().runOnUiThread(()->refreshLoaders(games.get(game.getSelectedItemPosition())));
-            }catch(Exception e){ requireActivity().runOnUiThread(()->status.setText("Não foi possível carregar Forge/OptiFine."));}
+                android.app.Activity activity=getActivity();
+                 if(activity!=null && !games.isEmpty()) activity.runOnUiThread(()->{if(isAdded()) refreshLoaders(games.get(game.getSelectedItemPosition()));});
+            }catch(Exception e){ android.app.Activity activity=getActivity(); if(activity!=null) activity.runOnUiThread(()->{if(isAdded()) status.setText("Não foi possível carregar Forge/OptiFine.");});}
         }).start();
         install.setOnClickListener(x->installPair());
         back.setOnClickListener(x->Tools.swapFragment(requireActivity(),MainMenuFragment.class,MainMenuFragment.TAG,null));
@@ -88,6 +90,9 @@ public class MikaelForgeOptiFineFragment extends Fragment {
         final String mc=game.getSelectedItem().toString();
         final String fv=forge.getSelectedItem().toString();
         final String ov=optifine.getSelectedItem().toString();
+        final android.app.Activity activity=getActivity();
+        if(activity==null){status.setText("Tela não está mais disponível.");return;}
+        if(ofAll==null || ofAll.minecraftVersions==null){status.setText("Lista do OptiFine indisponível.");return;}
         OptiFineUtils.OptiFineVersion selectedOF=null;
         for(int i=0;i<ofAll.minecraftVersions.size();i++) if(mc.equals(ofAll.minecraftVersions.get(i))){
             for(OptiFineUtils.OptiFineVersion o:ofAll.optifineVersions.get(i)) if(ov.equals(o.versionName)) selectedOF=o;
@@ -111,12 +116,12 @@ public class MikaelForgeOptiFineFragment extends Fragment {
                         }
                         public void onDataNotAvailable(){fail("OptiFine não disponível");}
                         public void onDownloadError(Exception e){fail("Erro no OptiFine: "+e.getMessage());}
-                        private void fail(String x){requireActivity().runOnUiThread(()->status.setText(x));}
-                    },requireActivity()).run();
+                        private void fail(String x){android.app.Activity activity=getActivity(); if(activity!=null) activity.runOnUiThread(()->{if(isAdded()) status.setText(x);});}
+                    },activity).run();
                 }
                 public void onDataNotAvailable(){fail("Forge não disponível");}
                 public void onDownloadError(Exception e){fail("Erro no Forge: "+e.getMessage());}
-                private void fail(String x){requireActivity().runOnUiThread(()->status.setText(x));}
+                private void fail(String x){android.app.Activity activity=getActivity(); if(activity!=null) activity.runOnUiThread(()->{if(isAdded()) status.setText(x);});}
             },fv).run();
         }).start();
     }
