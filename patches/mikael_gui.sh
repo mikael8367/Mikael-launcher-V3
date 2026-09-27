@@ -3387,7 +3387,7 @@ public class MikaelCrashResolverFragment extends Fragment {
     private Button resolve,undo;
 
     private static final Pattern MC=Pattern.compile("(?i)(?:minecraft(?: version)?|game version|version id)[^0-9]{0,28}(\\d+\\.\\d+(?:\\.\\d+)?)");
-    private static final Pattern JAR=Pattern.compile("(?i)([A-Za-z0-9_.()\-+ ]{2,140}\\.jar)");
+    private static final Pattern JAR=Pattern.compile("(?i)([A-Za-z0-9_.()\\-+ ]{2,140}\\\.jar)");
     private static final Pattern DEP=Pattern.compile("(?i)(?:missing dependency|depends on|requires)[:\\s]+([A-Za-z0-9_.:-]{3,80})");
 
     public MikaelCrashResolverFragment(){super(R.layout.fragment_mikael_crash_resolver);}
@@ -3592,7 +3592,7 @@ public class MikaelCrashResolverFragment extends Fragment {
     }
 
     private String updateSuspectFromModrinth(String suspect,String mc,File dir,File session,List<String> restores)throws Exception{
-        String base=suspect.replaceFirst("(?i)\\.jar$","").replaceAll("[-_ ]+\\d.*$","");
+        String base=suspect.replaceFirst("(?i)\\\.jar$","").replaceAll("[-_ ]+\\d.*$","");
         if(base.length()<3)return null;
         String search="https://api.modrinth.com/v2/search?limit=5&query="+URLEncoder.encode(base,"UTF-8")+
                 "&facets="+URLEncoder.encode("[[\"project_type:mod\"],[\"versions:"+mc+"\"]]","UTF-8");
@@ -4998,72 +4998,3 @@ if "private void advancedRepairAudit(" not in s:
         // Remove only clearly partial download artifacts; worlds and user data are never touched.
         if(hasAny(l,"download failed","failed to download","connection reset","sockettimeoutexception","unknownhostexception")){
             int n=cleanTemps(dir);
-            if(n>0)actions.add(new Action("DOWNLOAD: "+n+" arquivos parciais removidos",false));
-        }
-    }
-
-    private int compareVersions(String a,String b){
-        String[] x=(a==null?"":a).split("[^0-9]+");
-        String[] y=(b==null?"":b).split("[^0-9]+");
-        int n=Math.max(x.length,y.length);
-        for(int i=0;i<n;i++){
-            int xi=i<x.length&&!x[i].isEmpty()?parseIntSafe(x[i]):0;
-            int yi=i<y.length&&!y[i].isEmpty()?parseIntSafe(y[i]):0;
-            if(xi!=yi)return Integer.compare(xi,yi);
-        }
-        return 0;
-    }
-
-    private int parseIntSafe(String s){try{return Integer.parseInt(s);}catch(Exception e){return 0;}}
-
-    private String explicitLoaderFromLog(String l){
-        if(hasAny(l,"requires fabric loader","requires fabricloader"))return "Fabric";
-        if(hasAny(l,"requires quilt loader"))return "Quilt";
-        if(hasAny(l,"requires neoforge","net.neoforged"))return "NeoForge";
-        if(hasAny(l,"requires forge","net.minecraftforge"))return "Forge";
-        return null;
-    }
-
-    private File findNamedFile(File root,String name){
-        if(root==null||name==null||name.isEmpty())return null;
-        ArrayList<File> stack=new ArrayList<>();stack.add(root);int n=0;
-        while(!stack.isEmpty()&&n++<3000){
-            File d=stack.remove(stack.size()-1);if(d==null||!d.exists())continue;
-            if(d.isFile()){if(d.getName().equalsIgnoreCase(name))return d;continue;}
-            File[] fs=d.listFiles();if(fs==null)continue;
-            for(File f:fs){
-                if(f.isFile()&&f.getName().equalsIgnoreCase(name))return f;
-                if(f.isDirectory()&&!f.getName().equalsIgnoreCase("saves"))stack.add(f);
-            }
-        }
-        return null;
-    }
-
-    private boolean isUnder(File f,File parent){
-        try{return f.getCanonicalPath().startsWith(parent.getCanonicalPath()+File.separator);}
-        catch(Exception e){return false;}
-    }
-
-'''
-    if marker not in s:
-        raise SystemExit("restore map marker not found")
-    s=s.replace(marker,extra+marker,1)
-
-# Call the advanced pass after the existing repair phases.
-needle='''        // L) Empty mod directory sanity check: create it if a mods-related crash occurred.
-        if(hasAny(l,"modresolution","mod loading","mixin","fabricloader","modlauncher")){'''
-if "advancedRepairAudit(text,l,dir,mc,loader,mods,session,moved,actions);" not in s:
-    pos=s.find('''        writeRestoreMap(session,moved);''')
-    if pos<0: raise SystemExit("restore map call not found")
-    s=s[:pos]+'        advancedRepairAudit(text,l,dir,mc,loader,mods,session,moved,actions);\n\n'+s[pos:]
-
-p.write_text(s)
-PY
-
-python3 - <<'PY'
-from pathlib import Path
-p=Path("app_pojavlauncher/src/main/res/layout/fragment_mikael_crash_resolver.xml")
-s=p.read_text()
-s=s.replace("RESOLVER AUTOMÁTICO PRO++","RESOLVER AUTOMÁTICO PRO MAX")
-p.write_text(s)
-PY
