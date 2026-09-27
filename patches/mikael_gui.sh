@@ -3889,3 +3889,89 @@ if "crash_resolver_button" in open("app_pojavlauncher/src/main/res/layout/fragme
     s=s.replace(anchor,anchor+'\n   if(crashResolver!=null) crashResolver.setOnClickListener(x->swapFragment(requireActivity(),MikaelCrashResolverFragment.class,MikaelCrashResolverFragment.TAG,null));',1)
 p.write_text(s)
 PY
+
+# Resolver precision upgrades: exact dependency matching and automatic Java runtime alignment.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelCrashResolverFragment.java")
+s=p.read_text()
+
+# Add MultiRT import.
+if "import net.kdt.pojavlaunch.multirt.MultiRTUtils;" not in s:
+    s=s.replace("import net.kdt.pojavlaunch.prefs.LauncherPreferences;\n",
+                "import net.kdt.pojavlaunch.prefs.LauncherPreferences;\nimport net.kdt.pojavlaunch.multirt.MultiRTUtils;\n")
+
+# Tighten Modrinth dependency selection: exact slug/title match beats generic first result.
+old='''        JSONObject best=hits.getJSONObject(0);
+        String slug=best.optString("slug",best.optString("project_id",""));
+        if(slug.isEmpty())return null;'''
+new='''        JSONObject best=null;
+        String wanted=query.toLowerCase(Locale.ROOT).trim().replace("_","-");
+        for(int i=0;i<hits.length();i++){
+            JSONObject h=hits.getJSONObject(i);
+            String slug0=h.optString("slug","").toLowerCase(Locale.ROOT);
+            String title0=h.optString("title","").toLowerCase(Locale.ROOT).replace(" ","-");
+            if(slug0.equals(wanted)||title0.equals(wanted)||slug0.replace("-","_").equals(wanted.replace("-","_"))){
+                best=h;break;
+            }
+        }
+        if(best==null && hits.length()==1) best=hits.getJSONObject(0);
+        if(best==null)return null;
+        String slug=best.optString("slug",best.optString("project_id",""));
+        if(slug.isEmpty())return null;'''
+if old in s:s=s.replace(old,new,1)
+
+# Add runtime alignment before the JVM repair section.
+marker='''        // 7) JVM repair: return to automatic runtime selection and remove obviously invalid custom args.'''
+if "AUTO JAVA RUNTIME" not in s:
+    insert='''        // 7) JVM/runtime repair: infer required Java from class-file errors and
+        // select a compatible installed external runtime when available.
+        if(hasAny(l,"unsupportedclassversionerror","class file version")){
+            int requiredJava=javaMajorFromLog(t);
+            if(requiredJava>0){
+                String runtime=MultiRTUtils.getExactJreName(requiredJava);
+                if(runtime==null) runtime=MultiRTUtils.getNearestJreName(requiredJava);
+                if(runtime!=null && !runtime.isEmpty()){
+                    savePrefs(session,"defaultRuntime",LauncherPreferences.DEFAULT_PREF.getString("defaultRuntime",""));
+                    LauncherPreferences.DEFAULT_PREF.edit()
+                            .putString("defaultRuntime",runtime)
+                            .putBoolean("disable_autojre_select",false)
+                            .apply();
+                    actions.add("JAVA: runtime compatível selecionada automaticamente → "+runtime);
+                }else{
+                    actions.add("JAVA: Java "+requiredJava+" exigido, mas nenhuma runtime compatível está instalada");
+                }
+            }
+        }
+
+        // 8) JVM repair: return to automatic runtime selection and remove obviously invalid custom args.'''
+    s=s.replace(marker,insert,1)
+    # renumber later comments harmless; no semantic impact
+
+# Add helper before getCurrentProfileDirectory.
+marker='''    private File getCurrentProfileDirectory(){'''
+helper='''    private int javaMajorFromLog(String text){
+        Matcher m=Pattern.compile("(?i)class file version\\s+([0-9]+)").matcher(text);
+        int v=-1;
+        while(m.find())try{v=Integer.parseInt(m.group(1));}catch(Exception ignored){}
+        if(v<0)return -1;
+        if(v>=69)return 25;
+        if(v>=65)return 21;
+        if(v>=61)return 17;
+        if(v>=52)return 8;
+        return -1;
+    }
+
+'''
+if "private int javaMajorFromLog" not in s:
+    if marker not in s: raise SystemExit("resolver helper marker not found")
+    s=s.replace(marker,helper+marker,1)
+
+# Make dependency extraction reject generic words that aren't actual project IDs.
+old='''        return !y.equals("minecraft")&&!y.equals("java")&&!y.equals("forge")&&!y.equals("fabric")&&!y.equals("version");'''
+new='''        return !y.equals("minecraft")&&!y.equals("java")&&!y.equals("forge")&&!y.equals("fabric")&&
+                !y.equals("version")&&!y.equals("required")&&!y.equals("dependency")&&!y.equals("mod");'''
+s=s.replace(old,new,1)
+
+p.write_text(s)
+PY
