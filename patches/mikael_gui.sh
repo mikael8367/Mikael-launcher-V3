@@ -621,17 +621,16 @@ if "mikael_accent_color" not in s:
     s=s.replace('</PreferenceScreen>', extra+'\n</PreferenceScreen>')
     p.write_text(s)
 
-p=Path("app_pojavlauncher/src/main/res/values/arrays.xml")
-s=p.read_text() if p.exists() else '<resources/>'
-if "mikael_color_names" not in s:
-    s=s.replace('</resources>', '''    <string-array name="mikael_color_names">
+p=Path("app_pojavlauncher/src/main/res/values/mikael_arrays.xml")
+p.write_text('''<resources>
+    <string-array name="mikael_color_names">
         <item>Verde Mikael</item><item>Azul</item><item>Roxo</item><item>Vermelho</item><item>Laranja</item><item>Ciano</item><item>Rosa</item><item>Amarelo</item>
     </string-array>
     <string-array name="mikael_color_values">
         <item>#4ADE80</item><item>#60A5FA</item><item>#A78BFA</item><item>#F87171</item><item>#FB923C</item><item>#22D3EE</item><item>#F472B6</item><item>#FACC15</item>
     </string-array>
-</resources>''')
-    p.write_text(s)
+</resources>
+''')
 PY
 
 # Patch settings to pick and persist a video URI.
@@ -1021,7 +1020,7 @@ cat > "$RES/layout/fragment_mikael_mod_library.xml" <<'EOF'
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="BIBLIOTECA DE MODS" android:textColor="#FFFFFF" android:textSize="24sp" android:textStyle="bold"/>
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Mods do CurseForge para baixar direto no launcher" android:textColor="#9AA4B2"/>
 <LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="14dp" android:orientation="horizontal">
-<EditText android:id="@+id/mod_search" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:hint="Pesquisar mod..." android:textColor="#FFFFFF" android:hintTextColor="#7B8491" android:singleLine="true"/>
+<EditText android:id="@+id/mod_search" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:hint="Pesquisar mod..." android:textColor="#FFFFFF" android:singleLine="true"/>
 <Button android:id="@+id/mod_search_button" android:layout_width="90dp" android:layout_height="match_parent" android:text="BUSCAR" android:background="@drawable/mikael_button"/>
 </LinearLayout>
 <TextView android:id="@+id/mod_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="10dp" android:text="Carregando..." android:textColor="#4ADE80"/>
