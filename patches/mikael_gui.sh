@@ -29,39 +29,107 @@ cat > "$RES/drawable/ic_mikael_profile.xml" <<'EOF'
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="28dp" android:height="28dp" android:viewportWidth="28" android:viewportHeight="28"><path android:fillColor="#FFFFFF" android:pathData="M14,3a5,5 0,1 1,0 10a5,5 0,0 1,0 -10M5,25c0,-5 4,-8 9,-8s9,3 9,8z"/></vector>
 EOF
 cat > "$RES/drawable/mikael_play.xml" <<'EOF'
-<shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#4ADE80"/><corners android:radius="16dp"/><padding android:left="10dp" android:top="6dp" android:right="10dp" android:bottom="6dp"/></shape>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient android:startColor="#5EEB8B" android:endColor="#34D477" android:angle="0"/>
+    <corners android:radius="16dp"/>
+    <padding android:left="10dp" android:top="6dp" android:right="10dp" android:bottom="6dp"/>
+</shape>
 EOF
 cat > "$RES/layout/fragment_launcher.xml" <<'EOF'
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/background_app">
-<ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:fillViewport="true" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toTopOf="@id/mikael_bottom">
-<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:gravity="center_horizontal" android:paddingHorizontal="@dimen/_16sdp" android:paddingTop="@dimen/_16sdp" android:paddingBottom="@dimen/_10sdp">
-<ImageView android:layout_width="@dimen/_88sdp" android:layout_height="@dimen/_88sdp" android:src="@drawable/mikael_logo" android:contentDescription="Mikael Launcher"/>
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/_6sdp" android:text="MIKAEL LAUNCHER V3" android:textSize="@dimen/_21ssp" android:textStyle="bold" android:textColor="@android:color/white"/>
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Minecraft Java Edition" android:textSize="@dimen/_12ssp" android:alpha="0.72"/>
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/_10sdp" android:padding="@dimen/padding_medium" android:gravity="center" android:text="Versões • Perfis • Controles • Mods" android:textSize="@dimen/_11ssp" android:background="@drawable/background_card"/>
-<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="@dimen/_8sdp">
-<com.kdt.mcgui.LauncherMenuButton android:id="@+id/custom_control_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="CONTROLES" android:background="@drawable/mikael_button"/>
-<com.kdt.mcgui.LauncherMenuButton android:id="@+id/settings_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="@dimen/_6sdp" android:text="AJUSTES" android:background="@drawable/mikael_button"/>
-</LinearLayout>
-<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-<com.kdt.mcgui.LauncherMenuButton android:id="@+id/open_files_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="ARQUIVOS" android:background="@drawable/mikael_button"/>
-<com.kdt.mcgui.LauncherMenuButton android:id="@+id/share_logs_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="@dimen/_6sdp" android:text="LOGS" android:background="@drawable/mikael_button"/>
-</LinearLayout>
-<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-<com.kdt.mcgui.LauncherMenuButton android:id="@+id/news_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="NOTÍCIAS" android:background="@drawable/mikael_button"/>
-<com.kdt.mcgui.LauncherMenuButton android:id="@+id/discord_button" style="@style/LauncherMenuButton.Universal" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="@dimen/_6sdp" android:text="COMUNIDADE" android:background="@drawable/mikael_button"/>
-</LinearLayout>
-<com.kdt.mcgui.LauncherMenuButton android:id="@+id/install_jar_button" style="@style/LauncherMenuButton.Universal" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="INSTALAR MOD / JAR" android:background="@drawable/mikael_button"/>
-</LinearLayout>
-</ScrollView>
-<LinearLayout android:id="@+id/mikael_bottom" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="@dimen/_12sdp" android:paddingTop="@dimen/_6sdp" android:paddingBottom="@dimen/_9sdp" android:background="@color/background_bottom_bar" app:layout_constraintBottom_toBottomOf="parent">
-<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-<com.kdt.mcgui.mcVersionSpinner android:id="@+id/mc_version_spinner" android:layout_width="0dp" android:layout_height="@dimen/_50sdp" android:layout_weight="1" android:background="@android:color/transparent" android:drawableEnd="@drawable/spinner_arrow" app:drawableEndSize="@dimen/padding_heavy" app:drawableStartIntegerScaling="true" app:drawableStartSize="@dimen/_34sdp" app:drawableEndPadding="@dimen/_1sdp"/>
-<ImageButton android:id="@+id/edit_profile_button" android:layout_width="@dimen/_50sdp" android:layout_height="@dimen/_50sdp" android:background="@drawable/mikael_button" android:src="@drawable/ic_mikael_profile" android:contentDescription="Perfil"/>
-</LinearLayout>
-<com.kdt.mcgui.MineButton android:id="@+id/play_button" android:background="@drawable/mikael_play" android:textColor="#0C0E12" android:layout_width="match_parent" android:layout_height="@dimen/_56sdp" android:layout_marginTop="@dimen/_5sdp" android:text="JOGAR" android:textAllCaps="true"/>
-</LinearLayout>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:background="#080A0F">
+
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:fillViewport="true"
+        android:clipToPadding="false" app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toTopOf="@id/mikael_bottom">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"
+            android:paddingStart="@dimen/_14sdp" android:paddingEnd="@dimen/_14sdp" android:paddingTop="@dimen/_14sdp" android:paddingBottom="@dimen/_18sdp">
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"
+                android:gravity="center_vertical" android:padding="@dimen/_14sdp" android:background="@drawable/mikael_hero">
+                <ImageView android:layout_width="@dimen/_58sdp" android:layout_height="@dimen/_58sdp" android:src="@drawable/mikael_logo"
+                    android:contentDescription="Mikael Launcher"/>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                    android:orientation="vertical" android:paddingStart="@dimen/_12sdp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="MIKAEL LAUNCHER"
+                        android:textColor="#FFFFFF" android:textSize="@dimen/_19ssp" android:textStyle="bold"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp"
+                        android:text="V3  •  MINECRAFT JAVA EDITION" android:textColor="#8F9AAA" android:textSize="@dimen/_10ssp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp"
+                        android:text="Seu Minecraft. Do seu jeito." android:textColor="#4ADE80" android:textSize="@dimen/_10ssp" android:textStyle="bold"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/_12sdp"
+                android:orientation="horizontal" android:gravity="center_vertical">
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                    android:text="LAUNCHER" android:textColor="#FFFFFF" android:textSize="@dimen/_13ssp" android:textStyle="bold"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="PRONTO PARA JOGAR" android:textColor="#4ADE80" android:textSize="@dimen/_9ssp" android:textStyle="bold"/>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="@dimen/_7sdp">
+                <com.kdt.mcgui.LauncherMenuButton android:id="@+id/custom_control_button" style="@style/LauncherMenuButton.Universal"
+                    android:layout_width="0dp" android:layout_height="@dimen/_52sdp" android:layout_weight="1"
+                    android:text="CONTROLES" android:textSize="@dimen/_11ssp" android:textStyle="bold" android:background="@drawable/mikael_button"/>
+                <com.kdt.mcgui.LauncherMenuButton android:id="@+id/settings_button" style="@style/LauncherMenuButton.Universal"
+                    android:layout_width="0dp" android:layout_height="@dimen/_52sdp" android:layout_weight="1" android:layout_marginStart="@dimen/_7sdp"
+                    android:text="AJUSTES" android:textSize="@dimen/_11ssp" android:textStyle="bold" android:background="@drawable/mikael_button"/>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="@dimen/_7sdp">
+                <com.kdt.mcgui.LauncherMenuButton android:id="@+id/open_files_button" style="@style/LauncherMenuButton.Universal"
+                    android:layout_width="0dp" android:layout_height="@dimen/_52sdp" android:layout_weight="1"
+                    android:text="ARQUIVOS" android:textSize="@dimen/_11ssp" android:textStyle="bold" android:background="@drawable/mikael_button"/>
+                <com.kdt.mcgui.LauncherMenuButton android:id="@+id/share_logs_button" style="@style/LauncherMenuButton.Universal"
+                    android:layout_width="0dp" android:layout_height="@dimen/_52sdp" android:layout_weight="1" android:layout_marginStart="@dimen/_7sdp"
+                    android:text="LOGS" android:textSize="@dimen/_11ssp" android:textStyle="bold" android:background="@drawable/mikael_button"/>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="@dimen/_7sdp">
+                <com.kdt.mcgui.LauncherMenuButton android:id="@+id/news_button" style="@style/LauncherMenuButton.Universal"
+                    android:layout_width="0dp" android:layout_height="@dimen/_52sdp" android:layout_weight="1"
+                    android:text="NOTÍCIAS" android:textSize="@dimen/_11ssp" android:textStyle="bold" android:background="@drawable/mikael_button"/>
+                <com.kdt.mcgui.LauncherMenuButton android:id="@+id/discord_button" style="@style/LauncherMenuButton.Universal"
+                    android:layout_width="0dp" android:layout_height="@dimen/_52sdp" android:layout_weight="1" android:layout_marginStart="@dimen/_7sdp"
+                    android:text="COMUNIDADE" android:textSize="@dimen/_11ssp" android:textStyle="bold" android:background="@drawable/mikael_button"/>
+            </LinearLayout>
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/_16sdp"
+                android:text="CONTEÚDO" android:textColor="#FFFFFF" android:textSize="@dimen/_13ssp" android:textStyle="bold"/>
+
+            <com.kdt.mcgui.LauncherMenuButton android:id="@+id/install_jar_button" style="@style/LauncherMenuButton.Universal"
+                android:layout_width="match_parent" android:layout_height="@dimen/_50sdp" android:layout_marginTop="@dimen/_7sdp"
+                android:text="INSTALAR MOD / JAR" android:textSize="@dimen/_11ssp" android:textStyle="bold" android:background="@drawable/mikael_button"/>
+            <com.kdt.mcgui.LauncherMenuButton android:id="@+id/mod_library_button" style="@style/LauncherMenuButton.Universal"
+                android:layout_width="match_parent" android:layout_height="@dimen/_50sdp" android:layout_marginTop="@dimen/_7sdp"
+                android:text="BIBLIOTECA DE MODS" android:textSize="@dimen/_11ssp" android:textStyle="bold" android:background="@drawable/mikael_button"/>
+            <com.kdt.mcgui.LauncherMenuButton android:id="@+id/content_library_button" style="@style/LauncherMenuButton.Universal"
+                android:layout_width="match_parent" android:layout_height="@dimen/_50sdp" android:layout_marginTop="@dimen/_7sdp"
+                android:text="TEXTURAS  •  SHADERS  •  MUNDOS" android:textSize="@dimen/_11ssp" android:textStyle="bold" android:background="@drawable/mikael_button"/>
+            <com.kdt.mcgui.LauncherMenuButton android:id="@+id/forge_optifine_button" style="@style/LauncherMenuButton.Universal"
+                android:layout_width="match_parent" android:layout_height="@dimen/_50sdp" android:layout_marginTop="@dimen/_7sdp"
+                android:text="FORGE  •  OPTIFINE" android:textSize="@dimen/_11ssp" android:textStyle="bold" android:background="@drawable/mikael_button"/>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <LinearLayout android:id="@+id/mikael_bottom" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:paddingStart="@dimen/_12sdp" android:paddingEnd="@dimen/_12sdp"
+        android:paddingTop="@dimen/_8sdp" android:paddingBottom="@dimen/_10sdp" android:background="@drawable/mikael_bottom"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+            <com.kdt.mcgui.mcVersionSpinner android:id="@+id/mc_version_spinner" android:layout_width="0dp" android:layout_height="@dimen/_50sdp"
+                android:layout_weight="1" android:background="@android:color/transparent" app:drawableStartIntegerScaling="true" app:drawableStartSize="@dimen/_34sdp"/>
+            <ImageButton android:id="@+id/edit_profile_button" android:layout_width="@dimen/_48sdp" android:layout_height="@dimen/_48sdp"
+                android:background="@drawable/mikael_profile_bg" android:src="@drawable/ic_mikael_profile" android:padding="@dimen/_10sdp" android:contentDescription="Perfil"/>
+        </LinearLayout>
+
+        <com.kdt.mcgui.MineButton android:id="@+id/play_button" android:layout_width="match_parent" android:layout_height="@dimen/_54sdp"
+            android:layout_marginTop="@dimen/_8sdp" android:background="@drawable/mikael_play" android:textColor="#07110B"
+            android:text="JOGAR  ▶" android:textStyle="bold" android:textSize="@dimen/_15ssp" android:textAllCaps="false"/>
+    </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
 EOF
 
@@ -116,7 +184,33 @@ EOF
 
 # Fully custom Mikael account/header UI (no Amethyst skin/launcher images).
 cat > "$RES/drawable/mikael_button.xml" <<'EOF'
-<shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#20242D"/><corners android:radius="14dp"/><stroke android:width="1dp" android:color="#343A46"/><padding android:left="12dp" android:top="10dp" android:right="12dp" android:bottom="10dp"/></shape>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#151922"/>
+    <corners android:radius="15dp"/>
+    <stroke android:width="1dp" android:color="#293140"/>
+    <padding android:left="14dp" android:top="10dp" android:right="14dp" android:bottom="10dp"/>
+</shape>
+EOF
+cat > "$RES/drawable/mikael_hero.xml" <<'EOF'
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient android:startColor="#141A22" android:endColor="#0F131A" android:angle="0"/>
+    <corners android:radius="20dp"/>
+    <stroke android:width="1dp" android:color="#26303D"/>
+</shape>
+EOF
+cat > "$RES/drawable/mikael_bottom.xml" <<'EOF'
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#11151C"/>
+    <corners android:topLeftRadius="20dp" android:topRightRadius="20dp"/>
+    <stroke android:width="1dp" android:color="#202733"/>
+</shape>
+EOF
+cat > "$RES/drawable/mikael_profile_bg.xml" <<'EOF'
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#151922"/>
+    <corners android:radius="15dp"/>
+    <stroke android:width="1dp" android:color="#4ADE80"/>
+</shape>
 EOF
 cat > "$RES/drawable/mikael_topbar.xml" <<'EOF'
 <shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#111318"/><corners android:bottomLeftRadius="18dp" android:bottomRightRadius="18dp"/></shape>
