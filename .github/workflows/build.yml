@@ -12,22 +12,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout complete launcher source
         uses: actions/checkout@v4
 
-      - name: Prepare launcher
+      - name: Check vendored source
         run: |
-          git config --global url."https://github.com/".insteadOf "git@github.com:"
-          git clone --recursive --depth 1 https://github.com/AngelAuraMC/Amethyst-Android.git launcher
-
-      - name: Apply Mikael Launcher GUI
-        working-directory: launcher
-        run: |
-          chmod +x ../patches/mikael_gui.sh
-          ../patches/mikael_gui.sh
+          test -f launcher/gradlew
+          test -d launcher/app_pojavlauncher
+          echo "Building source directly from launcher/ in this repository."
 
       - name: Build APK
         working-directory: launcher
+        env:
+          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
         run: |
           chmod +x gradlew
           ./gradlew :app_pojavlauncher:assembleDebug --no-daemon --stacktrace
@@ -58,6 +55,4 @@ jobs:
           apk=$(find launcher/app_pojavlauncher/build/outputs/apk/debug -name '*.apk' -print -quit)
           mkdir -p release
           cp "$apk" "release/Mikael-Launcher-V${next}.apk"
-          gh release create "v${next}" "release/Mikael-Launcher-V${next}.apk" \
-            --title "Mikael Launcher V${next}" \
-            --generate-notes
+          gh release create "v${next}" "release/Mikael-Launcher-V${next}.apk"             --title "Mikael Launcher V${next}"             --generate-notes
