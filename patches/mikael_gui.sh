@@ -1131,3 +1131,40 @@ if "content_library_button" not in s:
  s=s.replace('mCustomControlButton.setOnClickListener(v -> startActivity(new Intent(requireContext(), CustomControlsActivity.class));','mCustomControlButton.setOnClickListener(v -> startActivity(new Intent(requireContext(), CustomControlsActivity.class)));\n        mContentLibraryButton.setOnClickListener(v -> Tools.swapFragment(requireActivity(), MikaelContentLibraryFragment.class, MikaelContentLibraryFragment.TAG, null));')
  p.write_text(s)
 PY
+
+# Automatically match CurseForge content to the currently selected Minecraft version.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelContentLibraryFragment.java")
+s=p.read_text()
+# Add reflection import.
+if "java.lang.reflect.Field" not in s:
+    s=s.replace("import java.util.*;", "import java.util.*; import java.lang.reflect.Field; import java.lang.reflect.Method;")
+# Make the search URL include the detected Minecraft version when available.
+old='String classId=t==0?"6":t==1?"12":t==2?"6552":"17"; String u="https://api.curseforge.com/v1/mods/search?gameId=432&classId="+classId+"&pageSize=30"; if(!q.isEmpty())u+="&searchFilter="+URLEncoder.encode(q,"UTF-8");'
+new='String classId=t==0?"6":t==1?"12":t==2?"6552":"17"; String mcVersion=detectMinecraftVersion(); String u="https://api.curseforge.com/v1/mods/search?gameId=432&classId="+classId+"&pageSize=30"; if(mcVersion!=null&&!mcVersion.isEmpty())u+="&gameVersions="+URLEncoder.encode(mcVersion,"UTF-8"); if(!q.isEmpty())u+="&searchFilter="+URLEncoder.encode(q,"UTF-8");'
+if old in s:
+    s=s.replace(old,new)
+# Show which version is being used.
+s=s.replace('status.setText("Pesquisando...");', 'String selectedVersion=detectMinecraftVersion(); status.setText(selectedVersion==null?"Pesquisando...":"Pesquisando para Minecraft "+selectedVersion+"...");', 1)
+# Insert robust version detector before json().
+marker=' JSONObject json(String u)throws Exception{'
+if "String detectMinecraftVersion()" not in s:
+    method=''' String detectMinecraftVersion(){
+  try{
+   String cur=LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE,null);
+   if(cur==null||cur.trim().isEmpty()) return null;
+   LauncherProfiles.load(); MinecraftProfile p=LauncherProfiles.mainProfileJson.profiles.get(cur);
+   if(p==null) return null;
+   String[] names={"lastVersionId","versionId","version","versionName","gameVersion"};
+   for(String n:names){
+    try{ Field f=p.getClass().getDeclaredField(n); f.setAccessible(true); Object v=f.get(p); if(v!=null&&v.toString().matches("\\d+\\.\\d+(\\.\\d+)?([.-].*)?")) return v.toString(); }catch(Exception ignored){}
+    try{ String m="get"+Character.toUpperCase(n.charAt(0))+n.substring(1); Method mm=p.getClass().getMethod(m); Object v=mm.invoke(p); if(v!=null&&v.toString().matches("\\d+\\.\\d+(\\.\\d+)?([.-].*)?")) return v.toString(); }catch(Exception ignored){}
+   }
+  }catch(Exception ignored){}
+  return null;
+ }
+'''
+    s=s.replace(marker,method+marker)
+p.write_text(s)
+PY
