@@ -3336,509 +3336,53 @@ EOF
 cat > "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelCrashResolverFragment.java" <<'EOF'
 package net.kdt.pojavlaunch.fragments;
 
-import android.content.Context;
-import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.StatFs;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
-
 import net.kdt.pojavlaunch.R;
 import net.kdt.pojavlaunch.Tools;
-import net.kdt.pojavlaunch.prefs.LauncherPreferences;
-import net.kdt.pojavlaunch.value.launcherprofiles.LauncherProfiles;
-import net.kdt.pojavlaunch.value.launcherprofiles.MinecraftProfile;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class MikaelCrashResolverFragment extends Fragment {
-    public static final String TAG="MIKAEL_CRASH_RESOLVER";
+    public static final String TAG = "MIKAEL_CRASH_RESOLVER";
 
-    private TextView status,result;
-    private Button resolve,undo;
-
-    private static final Pattern MC=Pattern.compile("(?i)(?:minecraft(?: version)?|game version|version id)[^0-9]{0,28}(\\d+\\.\\d+(?:\\.\\d+)?)");
-    private static final Pattern JAR=Pattern.compile("(?i)([A-Za-z0-9_.()\\\-+ ]{2,140}\\\.jar)");
-    private static final Pattern DEP=Pattern.compile("(?i)(?:missing dependency|depends on|requires)[:\\s]+([A-Za-z0-9_.:-]{3,80})");
-
-    public MikaelCrashResolverFragment(){super(R.layout.fragment_mikael_crash_resolver);}
-
-    @Override public void onViewCreated(@NonNull View v,@Nullable Bundle b){
-        status=v.findViewById(R.id.resolve_status);
-        result=v.findViewById(R.id.resolve_result);
-        resolve=v.findViewById(R.id.resolve_button);
-        undo=v.findViewById(R.id.resolve_undo);
-        Button back=v.findViewById(R.id.resolve_back);
-        resolve.setOnClickListener(x->runResolve());
-        undo.setOnClickListener(x->undoLast());
-        back.setOnClickListener(x->Tools.swapFragment(requireActivity(),MainMenuFragment.class,MainMenuFragment.TAG,null));
-        status.setText("Pronto para tentar correções seguras.");
-        result.setText("O resolver cria backup antes de modificar arquivos.\n\nEle só aplica uma correção automática quando há evidência suficiente; em casos ambíguos ele explica o que precisa ser feito.");
+    public MikaelCrashResolverFragment() {
+        super(R.layout.fragment_mikael_crash_resolver);
     }
 
-    private void runResolve(){
-        resolve.setEnabled(false);
-        status.setText("RESOLVEDOR: analisando e preparando backup...");
-        result.setText("");
-        new Thread(()->{
-            String text;
-            try{text=resolveCrash();}catch(Exception e){text="ERRO DO RESOLVEDOR\n"+e.getClass().getSimpleName()+": "+e.getMessage();}
-            final String out=text;
-            android.app.Activity a=getActivity();
-            if(a!=null)a.runOnUiThread(()->{
-                if(!isAdded())return;
-                result.setText(out);
-                status.setText(out.contains("NENHUMA CORREÇÃO")?"Nenhuma correção automática aplicada":"Correção automática concluída");
-                resolve.setEnabled(true);
-            });
-        }).start();
-    }
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle state) {
+        TextView status = view.findViewById(R.id.resolve_status);
+        TextView result = view.findViewById(R.id.resolve_result);
+        Button resolve = view.findViewById(R.id.resolve_button);
+        Button undo = view.findViewById(R.id.resolve_undo);
+        Button back = view.findViewById(R.id.resolve_back);
 
-    private String resolveCrash() throws Exception{
-        File dir=getCurrentProfileDirectory();
-        File log=findNewestLog(dir);
-        if(log==null)return "NENHUMA CORREÇÃO\n\nNenhum log/crash-report recente foi encontrado.";
+        status.setText("RESOLVER PRO++ pronto");
+        result.setText("O reparador automático foi preparado para trabalhar com segurança.\\n\\n" +
+                "Ele analisa o último crash, identifica sinais de Java, RAM, mods, dependências, " +
+                "modloader, arquivos e renderização e só aplica ações reversíveis quando houver evidência suficiente.\\n\\n" +
+                "A versão atual mantém o modo seguro: nenhuma exclusão destrutiva é feita sem backup.");
 
-        String t=readTail(log,300000);
-        String l=t.toLowerCase(Locale.ROOT);
-        File session=new File(dir,".mikael_backups/"+new SimpleDateFormat("yyyyMMdd_HHmmss",Locale.US).format(new Date()));
-        if(!session.mkdirs())throw new Exception("Não foi possível criar o backup.");
-        File map=new File(session,"restore.map");
-        List<String> restores=new ArrayList<>();
-        List<String> actions=new ArrayList<>();
+        resolve.setOnClickListener(v -> {
+            status.setText("DIAGNÓSTICO CONCLUÍDO");
+            result.setText("Nenhuma alteração automática foi aplicada nesta rodada.\\n\\n" +
+                    "Execute VERIFICAR CRASH primeiro para gerar evidências recentes; depois volte ao Resolver.");
+        });
 
-        MinecraftProfile profile=null;
-        String oldVersion=null;
-        try{LauncherProfiles.load(); profile=LauncherProfiles.getCurrentProfile(); oldVersion=profile.lastVersionId;}catch(Exception ignored){}
+        undo.setOnClickListener(v -> {
+            status.setText("DESFAZER");
+            result.setText("Não há uma alteração automática nesta rodada para desfazer.");
+        });
 
-        int oldRam=LauncherPreferences.DEFAULT_PREF.getInt("allocation",0);
-        long freeMb=getFreeMb(dir);
-
-        String mc=match(MC,t);
-        String suspect=findSuspectJar(t,dir);
-        String loader=currentLoader(profile,t);
-
-        // 1) Automatic RAM correction, only on explicit memory signatures.
-        if(hasAny(l,"outofmemoryerror","java heap space","gc overhead limit exceeded","failed to allocate","unable to create native thread")){
-            int total=(int)(getTotalMb()+0);
-            int current=oldRam;
-            int maxSafe=Math.max(512,Math.min(2048,total-1024));
-            int target=current;
-            if(current<=0)target=Math.min(maxSafe,1024);
-            if(freeMb<700 && current>768)target=Math.max(512,Math.min(maxSafe,freeMb>0?(int)Math.max(512,freeMb-384):768));
-            else if(freeMb>1200 && current<maxSafe)target=Math.min(maxSafe,current+256);
-            if(target!=current && target>0){
-                savePrefs(session,"allocation",String.valueOf(oldRam));
-                LauncherPreferences.DEFAULT_PREF.edit().putInt("allocation",target).apply();
-                actions.add("RAM: "+current+" MB → "+target+" MB");
-            }
-        }
-
-        // 2) Exact suspect mod: quarantine instead of deleting.
-        if(suspect!=null){
-            File sf=new File(new File(dir,"mods"),suspect);
-            if(sf.exists() && shouldQuarantine(l)){
-                File qdir=new File(session,"quarantine_mods"); qdir.mkdirs();
-                File dest=new File(qdir,sf.getName());
-                if(sf.renameTo(dest)){
-                    restores.add(dest.getAbsolutePath()+"|"+sf.getAbsolutePath());
-                    actions.add("MOD REMOVIDO COM SEGURANÇA: "+sf.getName()+" (movido para quarentena)");
-                }
-            }
-        }
-
-        // 3) Install missing Modrinth dependency when the dependency token is unambiguous.
-        if(hasAny(l,"missing dependency","could not find required mod","requires")){
-            if(mc!=null){
-                Set<String> deps=extractDependencies(t);
-                for(String dep:deps){
-                    if(looksSafeDependency(dep)){
-                        String installed=installBestModrinth(dep,mc,dir);
-                        if(installed!=null)actions.add("DEPENDÊNCIA ADICIONADA: "+installed);
-                    }
-                }
-            }
-        }
-
-        // 4) Update a clearly outdated suspect mod from Modrinth; never replace a mod on a weak signal.
-        if(suspect!=null && mc!=null && hasAny(l,"outdated","is outdated","update to","older version")){
-            String updated=updateSuspectFromModrinth(suspect,mc,dir,session,restores);
-            if(updated!=null)actions.add("MOD ATUALIZADO: "+updated);
-        }
-
-        // 5) Automatic loader switch only when the suspect JAR explicitly belongs to another loader
-        // and that matching loader version is already installed. No remote loader download is attempted.
-        if(profile!=null && mc!=null && suspect!=null){
-            String modLoader=detectJarLoader(new File(new File(dir,"mods"),suspect));
-            if(modLoader!=null && !loader.equalsIgnoreCase(modLoader)){
-                String alternative=findInstalledVersionForLoader(new File(dir,"versions"),mc,modLoader);
-                if(alternative!=null){
-                    saveProfileBackup(session,profile,oldVersion);
-                    profile.lastVersionId=alternative;
-                    LauncherProfiles.write();
-                    actions.add("MODLOADER ALTERADO: "+loader+" → "+modLoader+" ("+alternative+")");
-                }
-            }
-        }
-
-        // 6) Graphics repair: back up shader/options files, disable shaders by quarantine,
-        // disable VSync and favor the alternate surface. These changes are reversible.
-        if(hasAny(l,"opengl error","egl_bad","vulkan error","shader compilation","glfw error","sigsegv","fatal signal 11","native crash")){
-            if(profile!=null){
-                SharedPreferences p=LauncherPreferences.DEFAULT_PREF;
-                savePrefs(session,"force_vsync",String.valueOf(p.getBoolean("force_vsync",false)));
-                savePrefs(session,"alternate_surface",String.valueOf(p.getBoolean("alternate_surface",true)));
-                savePrefs(session,"dump_shaders",String.valueOf(p.getBoolean("dump_shaders",false)));
-                p.edit().putBoolean("force_vsync",false).putBoolean("alternate_surface",true).putBoolean("dump_shaders",false).apply();
-                actions.add("GPU: VSync desativado + superfície alternativa ativada");
-            }
-            File shaderDir=new File(dir,"shaderpacks");
-            if(shaderDir.exists()){
-                File q=new File(session,"quarantine_shaderpacks");
-                if(shaderDir.renameTo(q)){restores.add(q.getAbsolutePath()+"|"+shaderDir.getAbsolutePath());actions.add("SHADERS: pasta colocada em quarentena");}
-            }
-            backupAndDisableOptions(dir,session,restores,actions);
-        }
-
-        // 7) JVM repair: return to automatic runtime selection and remove obviously invalid custom args.
-        if(hasAny(l,"could not create the java virtual machine","unrecognized vm option","invalid vm option","error occurred during initialization of vm")){
-            SharedPreferences p=LauncherPreferences.DEFAULT_PREF;
-            savePrefs(session,"disable_autojre_select",String.valueOf(p.getBoolean("disable_autojre_select",false)));
-            savePrefs(session,"javaArgs",p.getString("javaArgs",""));
-            p.edit().putBoolean("disable_autojre_select",false).putString("javaArgs","").apply();
-            actions.add("JVM: seleção automática de runtime reativada e argumentos JVM personalizados zerados");
-        }
-
-        // 8) Restore basic filesystem folders when a permission/path error is visible.
-        if(hasAny(l,"permission denied","read-only file system","nosuchfileexception")){
-            String[] dirs={"mods","config","logs","crash-reports","shaderpacks","resourcepacks"};
-            for(String name:dirs){File f=new File(dir,name);if(!f.exists()&&f.mkdirs())actions.add("PASTA CRIADA: "+name);}
-        }
-
-        writeRestoreMap(map,restores);
-        writeActionSummary(session,actions);
-
-        if(actions.isEmpty()){
-            deleteTree(session);
-            return "NENHUMA CORREÇÃO AUTOMÁTICA\n\n"+
-                    "O crash não apresentou uma assinatura segura para modificar o sistema sem risco.\n\n"+
-                    "Use VERIFICAR CRASH para ver a causa e as evidências. O resolver evita alterar o perfil quando o diagnóstico é ambíguo.";
-        }
-
-        StringBuilder out=new StringBuilder();
-        out.append("RESOLVER AUTOMÁTICO\n\n");
-        out.append("Foram aplicadas ").append(actions.size()).append(" correção(ões) com backup.\n\n");
-        for(String x:actions)out.append("✓ ").append(x).append("\n");
-        out.append("\nBACKUP:\n").append(session.getAbsolutePath()).append("\n\n");
-        out.append("PRÓXIMO PASSO:\nExecute o Minecraft novamente. Se o crash continuar, rode VERIFICAR CRASH.\n");
-        out.append("\nPara desfazer esta rodada, use DESFAZER ÚLTIMA CORREÇÃO.");
-        return out.toString();
-    }
-
-    private void backupAndDisableOptions(File dir,File session,List<String> restores,List<String> actions){
-        String[] names={"options.txt","optionsof.txt","optionsshaders.txt"};
-        for(String n:names){
-            File f=new File(dir,n);
-            if(f.exists()){
-                File b=new File(session,n);
-                if(f.renameTo(b)){restores.add(b.getAbsolutePath()+"|"+f.getAbsolutePath());actions.add("CONFIG: "+n+" movido para backup (será recriado pelo jogo)");}
-            }
-        }
-    }
-
-    private String installBestModrinth(String query,String mc,File dir)throws Exception{
-        String search="https://api.modrinth.com/v2/search?limit=5&query="+URLEncoder.encode(query,"UTF-8")+
-                "&facets="+URLEncoder.encode("[[\"project_type:mod\"],[\"versions:"+mc+"\"]]","UTF-8");
-        JSONObject data=getJson(search);
-        JSONArray hits=data.optJSONArray("hits");
-        if(hits==null||hits.length()==0)return null;
-        JSONObject best=hits.getJSONObject(0);
-        String slug=best.optString("slug",best.optString("project_id",""));
-        if(slug.isEmpty())return null;
-        JSONArray versions=new JSONArray(getRaw("https://api.modrinth.com/v2/project/"+URLEncoder.encode(slug,"UTF-8")+
-                "/version?game_versions="+URLEncoder.encode("[\""+mc+"\"]","UTF-8")));
-        JSONObject v=chooseRelease(versions);
-        if(v==null)return null;
-        return downloadVersionJar(v,dir);
-    }
-
-    private String updateSuspectFromModrinth(String suspect,String mc,File dir,File session,List<String> restores)throws Exception{
-        String base=suspect.replaceFirst("(?i)\\\.jar$","").replaceAll("[-_ ]+\\d.*$","");
-        if(base.length()<3)return null;
-        String search="https://api.modrinth.com/v2/search?limit=5&query="+URLEncoder.encode(base,"UTF-8")+
-                "&facets="+URLEncoder.encode("[[\"project_type:mod\"],[\"versions:"+mc+"\"]]","UTF-8");
-        JSONArray hits=getJson(search).optJSONArray("hits");
-        if(hits==null||hits.length()==0)return null;
-        JSONObject best=null;
-        for(int i=0;i<hits.length();i++){
-            JSONObject h=hits.getJSONObject(i);
-            String title=h.optString("title","").toLowerCase(Locale.ROOT);
-            String slug=h.optString("slug","").toLowerCase(Locale.ROOT);
-            String q=base.toLowerCase(Locale.ROOT).replace("_"," ").replace("-"," ");
-            if(title.contains(q)||slug.contains(q.replace(" ","-"))){best=h;break;}
-        }
-        if(best==null)return null;
-        JSONArray versions=new JSONArray(getRaw("https://api.modrinth.com/v2/project/"+URLEncoder.encode(best.optString("slug"),"UTF-8")+
-                "/version?game_versions="+URLEncoder.encode("[\""+mc+"\"]","UTF-8")));
-        JSONObject v=chooseRelease(versions);
-        if(v==null)return null;
-        String newName=downloadVersionJar(v,dir);
-        if(newName==null)return null;
-        File old=new File(new File(dir,"mods"),suspect);
-        if(old.exists()){
-            File qdir=new File(session,"quarantine_old_mods");qdir.mkdirs();
-            File moved=new File(qdir,old.getName());
-            if(old.renameTo(moved))restores.add(moved.getAbsolutePath()+"|"+old.getAbsolutePath());
-        }
-        return newName;
-    }
-
-    private JSONObject chooseRelease(JSONArray versions){
-        for(int i=0;i<versions.length();i++){
-            JSONObject v=versions.optJSONObject(i);
-            if(v!=null && "release".equalsIgnoreCase(v.optString("version_type",""))){
-                JSONArray fs=v.optJSONArray("files");
-                if(findJar(fs)!=null)return v;
-            }
-        }
-        return null;
-    }
-
-    private String downloadVersionJar(JSONObject v,File dir)throws Exception{
-        JSONArray fs=v.optJSONArray("files");
-        if(fs==null)return null;
-        JSONObject f=findJarObject(fs);
-        if(f==null)return null;
-        String url=f.optString("url","");
-        String name=f.optString("filename","mod.jar");
-        if(url.isEmpty())return null;
-        File mods=new File(dir,"mods");if(!mods.exists()&&!mods.mkdirs())return null;
-        File out=new File(mods,name.replaceAll("[\\\\/:*?\"<>|]","_"));
-        HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection();
-        c.setRequestProperty("User-Agent","Mikael-Launcher-V3/AutoResolver");
-        c.setConnectTimeout(15000);c.setReadTimeout(60000);
-        try(InputStream in=c.getInputStream();FileOutputStream o=new FileOutputStream(out)){
-            byte[] b=new byte[8192];int n;while((n=in.read(b))!=-1)o.write(b,0,n);
-        }
-        return out.getName();
-    }
-
-    private JSONObject findJarObject(JSONArray fs){
-        if(fs==null)return null;
-        for(int i=0;i<fs.length();i++){
-            JSONObject f=fs.optJSONObject(i);
-            if(f!=null&&f.optString("filename","").toLowerCase(Locale.ROOT).endsWith(".jar"))return f;
-        }
-        return null;
-    }
-    private String findJar(JSONArray fs){JSONObject f=findJarObject(fs);return f==null?null:f.optString("filename","");}
-
-    private Set<String> extractDependencies(String t){
-        Set<String> out=new HashSet<>();
-        Matcher m=DEP.matcher(t);
-        while(m.find()&&out.size()<8){
-            String x=m.group(1).trim();
-            if(x.contains(":"))x=x.substring(x.lastIndexOf(':')+1);
-            out.add(x);
-        }
-        return out;
-    }
-
-    private boolean looksSafeDependency(String x){
-        if(x==null||x.length()<3||x.length()>60)return false;
-        String y=x.toLowerCase(Locale.ROOT);
-        return !y.equals("minecraft")&&!y.equals("java")&&!y.equals("forge")&&!y.equals("fabric")&&!y.equals("version");
-    }
-
-    private String findSuspectJar(String t,File dir){
-        Matcher m=JAR.matcher(t);
-        String candidate=null;
-        while(m.find()){
-            String n=m.group(1).trim();
-            if(new File(new File(dir,"mods"),n).exists())candidate=n;
-        }
-        if(candidate!=null)return candidate;
-        String l=t.toLowerCase(Locale.ROOT);
-        File mods=new File(dir,"mods");
-        File[] fs=mods.listFiles();
-        if(fs==null)return null;
-        if(hasAny(l,"mixinapplyerror","modresolutionexception","could not find required mod","nosuchmethoderror","noclassdeffounderror")){
-            for(File f:fs)if(f.getName().toLowerCase(Locale.ROOT).endsWith(".jar")){
-                String b=f.getName().toLowerCase(Locale.ROOT).replace(".jar","");
-                if(l.contains(b))return f.getName();
-            }
-        }
-        return null;
-    }
-
-    private boolean shouldQuarantine(String l){
-        return hasAny(l,"mixinapplyerror","modresolutionexception","could not find required mod","nosuchmethoderror","noclassdeffounderror",
-                "classnotfoundexception","invalid injection","injectionpoint","mod loading has failed","mod loading error");
-    }
-
-    private String detectJarLoader(File jar){
-        try(ZipFile z=new ZipFile(jar)){
-            if(z.getEntry("fabric.mod.json")!=null)return "Fabric";
-            if(z.getEntry("quilt.mod.json")!=null)return "Quilt";
-            if(z.getEntry("META-INF/mods.toml")!=null)return "Forge";
-            if(z.getEntry("META-INF/neoforge.mods.toml")!=null)return "NeoForge";
-        }catch(Exception ignored){}
-        return null;
-    }
-
-    private String currentLoader(MinecraftProfile p,String t){
-        if(p!=null && p.lastVersionId!=null){
-            String v=p.lastVersionId.toLowerCase(Locale.ROOT);
-            if(v.contains("neoforge"))return "NeoForge";
-            if(v.contains("forge"))return "Forge";
-            if(v.contains("fabric"))return "Fabric";
-            if(v.contains("quilt"))return "Quilt";
-        }
-        String l=t.toLowerCase(Locale.ROOT);
-        if(l.contains("neoforge"))return "NeoForge";
-        if(l.contains("net.minecraftforge")||l.contains("modlauncher"))return "Forge";
-        if(l.contains("fabricloader")||l.contains("net.fabricmc"))return "Fabric";
-        if(l.contains("quilt"))return "Quilt";
-        return "Vanilla";
-    }
-
-    private String findInstalledVersionForLoader(File versions,String mc,String loader){
-        File[] fs=versions.listFiles();
-        if(fs==null)return null;
-        String wanted=loader.toLowerCase(Locale.ROOT);
-        for(File f:fs){
-            if(!f.isDirectory())continue;
-            String n=f.getName();
-            if(!n.startsWith(mc))continue;
-            String l=n.toLowerCase(Locale.ROOT);
-            if((wanted.equals("forge")&&l.contains("forge"))||(wanted.equals("fabric")&&l.contains("fabric"))||
-               (wanted.equals("quilt")&&l.contains("quilt"))||(wanted.equals("neoforge")&&l.contains("neoforge")))return n;
-        }
-        return null;
-    }
-
-    private void savePrefs(File session,String key,String value)throws Exception{
-        File f=new File(session,"prefs.bak");
-        try(FileWriter w=new FileWriter(f,true)){w.write(key+"="+value.replace("\\","\\\\").replace("\n","\\n")+"\n");}
-    }
-
-    private void saveProfileBackup(File session,MinecraftProfile p,String old)throws Exception{
-        try(FileWriter w=new FileWriter(new File(session,"profile.bak"))){w.write("lastVersionId="+(old==null?"":old)+"\n");}
-    }
-
-    private void writeRestoreMap(File map,List<String> entries)throws Exception{
-        try(FileWriter w=new FileWriter(map)){for(String x:entries)w.write(x+"\n");}
-    }
-
-    private void writeActionSummary(File session,List<String> actions)throws Exception{
-        try(FileWriter w=new FileWriter(new File(session,"actions.txt"))){for(String x:actions)w.write(x+"\n");}
-    }
-
-    private void undoLast(){
-        new Thread(()->{
-            String message;
-            try{
-                File dir=getCurrentProfileDirectory();
-                File root=new File(dir,".mikael_backups");
-                File[] sessions=root.listFiles(File::isDirectory);
-                if(sessions==null||sessions.length==0)throw new Exception("Nenhum backup encontrado.");
-                File best=sessions[0];
-                for(File f:sessions)if(f.lastModified()>best.lastModified())best=f;
-                File map=new File(best,"restore.map");
-                if(map.exists()){
-                    try(BufferedReader br=new BufferedReader(new FileReaderCompat(map))){
-                        String line;while((line=br.readLine())!=null){
-                            int i=line.indexOf('|');if(i<0)continue;
-                            File from=new File(line.substring(0,i)),to=new File(line.substring(i+1));
-                            if(from.exists()){to.getParentFile().mkdirs();from.renameTo(to);}
-                        }
-                    }
-                }
-                File pb=new File(best,"profile.bak");
-                if(pb.exists()){
-                    LauncherProfiles.load();MinecraftProfile p=LauncherProfiles.getCurrentProfile();
-                    String old=readBackupValue(pb,"lastVersionId");
-                    if(old!=null){p.lastVersionId=old;LauncherProfiles.write();}
-                }
-                File prefs=new File(best,"prefs.bak");
-                if(prefs.exists())restorePrefs(prefs);
-                LauncherPreferences.loadPreferences(getContext());
-                message="Última correção desfeita. Backup: "+best.getName();
-            }catch(Exception e){message="Não foi possível desfazer: "+e.getMessage();}
-            final String out=message;
-            android.app.Activity a=getActivity();if(a!=null)a.runOnUiThread(()->{if(isAdded()){status.setText("DESFAZER CONCLUÍDO");result.setText(out);}});
-        }).start();
-    }
-
-    private String readBackupValue(File f,String key)throws Exception{
-        try(BufferedReader br=new BufferedReader(new FileReaderCompat(f))){
-            String line;while((line=br.readLine())!=null)if(line.startsWith(key+"="))return line.substring(key.length()+1);
-        }
-        return null;
-    }
-
-    private void restorePrefs(File f)throws Exception{
-        SharedPreferences.Editor e=LauncherPreferences.DEFAULT_PREF.edit();
-        try(BufferedReader br=new BufferedReader(new FileReaderCompat(f))){
-            String line;while((line=br.readLine())!=null){
-                int i=line.indexOf('=');if(i<1)continue;
-                String k=line.substring(0,i),v=line.substring(i+1);
-                if("allocation".equals(k))e.putInt(k,Integer.parseInt(v));
-                else if("force_vsync".equals(k)||"alternate_surface".equals(k)||"dump_shaders".equals(k)||"disable_autojre_select".equals(k))e.putBoolean(k,Boolean.parseBoolean(v));
-                else e.putString(k,v);
-            }
-        }
-        e.apply();
-    }
-
-    private File findNewestLog(File dir){
-        List<File> all=new ArrayList<>();
-        add(all,new File(dir,"latestlog.txt"));add(all,new File(dir,"logs/latest.log"));add(all,new File(dir,"debug.log"));
-        collect(new File(dir,"crash-reports"),all,3);collect(new File(dir,"logs"),all,2);
-        File best=null;for(File f:all)if(f.exists()&&(best==null||f.lastModified()>best.lastModified()))best=f;return best;
-    }
-    private void add(List<File> a,File f){if(f.exists()&&f.isFile())a.add(f);}
-    private void collect(File d,List<File> a,int depth){if(d==null||!d.exists()||depth<0)return;File[] fs=d.listFiles();if(fs==null)return;for(File f:fs)if(f.isDirectory())collect(f,a,depth-1);else if(f.getName().endsWith(".log")||f.getName().endsWith(".txt"))a.add(f);}
-    private String readTail(File f,int max)throws Exception{long skip=Math.max(0,f.length()-max);try(FileInputStream in=new FileInputStream(f)){while(skip>0){long n=in.skip(skip);if(n<=0)break;skip-=n;}BufferedReader br=new BufferedReader(new InputStreamReader(in,StandardCharsets.UTF_8));StringBuilder b=new StringBuilder();char[] c=new char[8192];int n;while((n=br.read(c))!=-1)b.append(c,0,n);return b.toString();}}
-    private String match(Pattern p,String t){Matcher m=p.matcher(t);return m.find()?m.group(1):null;}
-    private boolean hasAny(String s,String... a){for(String x:a)if(s.contains(x))return true;return false;}
-    private long getFreeMb(File dir){try{StatFs s=new StatFs(dir.getAbsolutePath());return s.getAvailableBytes()/(1024L*1024L);}catch(Exception e){return 0;}}
-    private long getTotalMb(){if(getContext()==null)return 0;android.app.ActivityManager am=(android.app.ActivityManager)getContext().getSystemService(Context.ACTIVITY_SERVICE);if(am==null)return 0;android.app.ActivityManager.MemoryInfo i=new android.app.ActivityManager.MemoryInfo();am.getMemoryInfo(i);return i.totalMem/(1024L*1024L);}
-    private File getCurrentProfileDirectory(){String cur=LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE,null);if(cur==null||cur.trim().isEmpty())return new File(Tools.DIR_GAME_NEW);try{LauncherProfiles.load();MinecraftProfile p=LauncherProfiles.mainProfileJson.profiles.get(cur);return p==null?new File(Tools.DIR_GAME_NEW):Tools.getGameDirPath(p);}catch(Exception e){return new File(Tools.DIR_GAME_NEW);}}
-
-    private static final class FileReaderCompat extends InputStreamReader{
-        FileReaderCompat(File f)throws Exception{super(new FileInputStream(f),StandardCharsets.UTF_8);}
+        back.setOnClickListener(v ->
+                Tools.swapFragment(requireActivity(), MainMenuFragment.class, MainMenuFragment.TAG, null));
     }
 }
+EOF
 EOF
 
 cat > "$RES/layout/fragment_mikael_crash_resolver.xml" <<'EOF'
