@@ -1,0 +1,8 @@
+<resources>
+    <string-array name="mikael_color_names">
+        <item>Verde Mikael</item><item>Azul</item><item>Roxo</item><item>Vermelho</item><item>Laranja</item><item>Ciano</item><item>Rosa</item><item>Amarelo</item>
+    </string-array>
+    <string-array name="mikael_color_values">
+        <item>#4ADE80</item><item>#60A5FA</item><item>#A78BFA</item><item>#F87171</item><item>#FB923C</item><item>#22D3EE</item><item>#F472B6</item><item>#FACC15</item>
+    </string-array>
+</resources>
