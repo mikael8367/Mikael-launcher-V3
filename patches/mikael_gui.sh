@@ -4998,3 +4998,49 @@ if "private void advancedRepairAudit(" not in s:
         // Remove only clearly partial download artifacts; worlds and user data are never touched.
         if(hasAny(l,"download failed","failed to download","connection reset","sockettimeoutexception","unknownhostexception")){
             int n=cleanTemps(dir);
+
+
+# BUILD SANITIZER: normalize Java-8-compatible regex/string syntax after all generated source rewrites.
+python3 - <<'PY'
+from pathlib import Path
+
+# Crash checker: Java string literals cannot contain an unescaped quote inside a regex character class,
+# and a backslash before '-' must itself be escaped. Use a safe character class with '-' at the end.
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelCrashCheckerFragment.java")
+if p.exists():
+    x=p.read_text()
+    x=x.replace('Pattern.compile("(?i)(?:fabric.mod.json|modid|id)[:=]\\\\s*[\\\\"\\\']?([a-z0-9_.-]{2,80})")',
+                'Pattern.compile("(?i)(?:fabric\\\\.mod\\\\.json|modid|id)[:=]\\\\s*[\\\\\\\"\\\']?([a-z0-9_.-]{2,80})")')
+    x=x.replace('Pattern.compile("(?i)([a-z0-9_.-]{2,80}\\\\.jar)")',
+                'Pattern.compile("(?i)([a-z0-9_.-]{2,80}\\\\.jar)")')
+    x=x.replace('Pattern.compile("(?i)(?:fabric.mod.json|modid|id)[:=]\\\\s*[\\\\"\\\']?([a-z0-9_.-]{2,80})")',
+                'Pattern.compile("(?i)(?:fabric\\\\.mod\\\\.json|modid|id)[:=]\\\\s*[\\\\\\\"\\\']?([a-z0-9_.-]{2,80})")')
+    p.write_text(x)
+
+# Crash resolver: avoid Java-illegal single backslashes before '-' in regex character classes.
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelCrashResolverFragment.java")
+if p.exists():
+    x=p.read_text()
+    x=x.replace('A-Za-z0-9_.()\\\\-+ ]','A-Za-z0-9_.()-+ ]')
+    x=x.replace('A-Za-z0-9_.\\\\-]+','A-Za-z0-9_.-]+')
+    x=x.replace('A-Za-z0-9_.()\\\\-+ ]','A-Za-z0-9_.()-+ ]')
+    p.write_text(x)
+
+# Mod library: keep the confirmation message as a normal Java string with escaped newlines.
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelModLibraryFragment.java")
+if p.exists():
+    x=p.read_text()
+    start='        new AlertDialog.Builder(requireContext()).setTitle(m.name)\\n                .setMessage(m.summary+"\\n\\nMinecraft: "+(detectMinecraftVersion()==null?"automático":detectMinecraftVersion())+"\\nDependências obrigatórias: automáticas")'
+    # If the heredoc produced literal newlines inside the Java string, rebuild this small method block.
+    if '.setMessage(m.summary+"\\n' not in x:
+        import re
+        x=re.sub(r'(?s)        new AlertDialog\\.Builder\\(requireContext\\)\\.setTitle\\(m\\.name\\)\\s*\\.setMessage\\(m\\.summary\\+".*?Dependências obrigatórias: automáticas"\\)',
+                 '        new AlertDialog.Builder(requireContext()).setTitle(m.name)\\n                .setMessage(m.summary+"\\\\n\\\\nMinecraft: "+(detectMinecraftVersion()==null?"automático":detectMinecraftVersion())+"\\\\nDependências obrigatórias: automáticas")', x, count=1)
+    p.write_text(x)
+
+# Launcher preferences: strip accidental Java text-block delimiters if introduced by generated replacements.
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/prefs/screens/LauncherPreferenceFragment.java")
+if p.exists():
+    x=p.read_text().replace('"""','"')
+    p.write_text(x)
+PY
