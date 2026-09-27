@@ -365,10 +365,13 @@ public class ElyLoginFragment extends Fragment {
                     account.clientToken=json.optString("clientToken",clientToken);
                     account.isMicrosoft=false;
                     account.msaRefreshToken="0";
-                    account.expiresAt=System.currentTimeMillis()+24L*60L*60L*1000L;
+                    account.selectedVersion="1.20.1";
+                    account.expiresAt=0L;
                     account.save();
+                    net.kdt.pojavlaunch.PojavProfile.setCurrentProfile(requireContext(), account.username);
+                    try { account.updateSkinFace(); } catch (Exception ignored) {}
                     requireActivity().runOnUiThread(() -> {
-                        status.setText("Conta Ely.by adicionada.");
+                        status.setText("Conta Ely.by adicionada: "+account.username);
                         Tools.swapFragment(requireActivity(), MainMenuFragment.class, MainMenuFragment.TAG, null);
                     });
                 } catch(Exception e) {
