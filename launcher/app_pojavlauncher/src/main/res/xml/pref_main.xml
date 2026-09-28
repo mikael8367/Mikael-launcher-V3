@@ -143,24 +143,4 @@
             android:min="50" android:max="100" android:defaultValue="100"
             app:showSeekBarValue="true" />
     </PreferenceCategory>
-\n
-    <PreferenceCategory android:title="MIKAEL PERSONALIZAÇÃO">
-        <ListPreference
-            android:key="mikael_accent_color"
-            android:title="Cor do launcher"
-            android:summary="Escolha a cor dos botões e destaques"
-            android:entries="@array/mikael_color_names"
-            android:entryValues="@array/mikael_color_values"
-            android:defaultValue="#4ADE80" />
-        <Preference
-            android:key="mikael_video_background"
-            android:title="Vídeo de fundo"
-            android:summary="Escolha um vídeo do aparelho para usar como fundo animado" />
-        <SwitchPreferenceCompat
-            android:key="mikael_video_enabled"
-            android:title="Ativar vídeo de fundo"
-            android:summary="Reproduz o vídeo em loop na tela inicial"
-            android:defaultValue="false" />
-    </PreferenceCategory>
-
-</PreferenceScreen>
+\n</PreferenceScreen>

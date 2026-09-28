@@ -3,8 +3,6 @@ package net.kdt.pojavlaunch.prefs.screens;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
-import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 
@@ -22,7 +20,6 @@ import net.kdt.pojavlaunch.prefs.LauncherPreferences;
  * overriding only onCreatePreferences
  */
 public class LauncherPreferenceFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
-    private static final int MIKAEL_VIDEO_PICKER = 9401;
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
@@ -36,17 +33,6 @@ public class LauncherPreferenceFragment extends PreferenceFragmentCompat impleme
     public void onCreatePreferences(Bundle b, String str) {
         addPreferencesFromResource(R.xml.pref_main);
         setupNotificationRequestPreference();
-        Preference video = findPreference("mikael_video_background");
-        if (video != null) {
-            video.setOnPreferenceClickListener(pref -> {
-                Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                i.setType("video/*");
-                i.addCategory(Intent.CATEGORY_OPENABLE);
-                i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-                startActivityForResult(i, MIKAEL_VIDEO_PICKER);
-                return true;
-            });
-        }
     }
 
     private void setupNotificationRequestPreference() {
@@ -67,24 +53,6 @@ public class LauncherPreferenceFragment extends PreferenceFragmentCompat impleme
             });
         }else{
             mRequestNotificationPermissionPreference.setVisible(false);
-        }
-    }
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == MIKAEL_VIDEO_PICKER && resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
-            Uri uri = data.getData();
-            try {
-                requireContext().getContentResolver().takePersistableUriPermission(
-                        uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            } catch (Exception ignored) {}
-            getPreferenceManager().getSharedPreferences().edit()
-                    .putString("mikael_video_uri", uri.toString())
-                    .putBoolean("mikael_video_enabled", true)
-                    .apply();
-            Preference pref = findPreference("mikael_video_background");
-            if (pref != null) pref.setSummary("Vídeo selecionado • toque para trocar");
         }
     }
 

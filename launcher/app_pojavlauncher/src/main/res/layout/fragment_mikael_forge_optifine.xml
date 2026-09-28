@@ -1,16 +1,2 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#0C0E12">
-<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="FORGE + OPTIFINE" android:textColor="#FFFFFF" android:textSize="26sp" android:textStyle="bold"/>
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="Selecione as 3 versões. O Forge e o OptiFine são baixados juntos." android:textColor="#9AA4B2" android:textSize="14sp"/>
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:text="VERSÃO DO JOGO" android:textColor="#4ADE80" android:textStyle="bold"/>
-<Spinner android:id="@+id/mfo_game" android:layout_width="match_parent" android:layout_height="52dp" android:background="@drawable/mikael_button"/>
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="VERSÃO DO FORGE" android:textColor="#4ADE80" android:textStyle="bold"/>
-<Spinner android:id="@+id/mfo_forge" android:layout_width="match_parent" android:layout_height="52dp" android:background="@drawable/mikael_button"/>
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="VERSÃO DO OPTIFINE" android:textColor="#4ADE80" android:textStyle="bold"/>
-<Spinner android:id="@+id/mfo_optifine" android:layout_width="match_parent" android:layout_height="52dp" android:background="@drawable/mikael_button"/>
-<TextView android:id="@+id/mfo_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="Carregando versões..." android:textColor="#9AA4B2"/>
-<Button android:id="@+id/mfo_install" android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="18dp" android:text="BAIXAR FORGE + OPTIFINE" android:textAllCaps="false" android:background="@drawable/mikael_button"/>
-<Button android:id="@+id/mfo_back" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="10dp" android:text="VOLTAR" android:textAllCaps="false" android:background="@drawable/mikael_button"/>
-</LinearLayout>
-</ScrollView>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="22dp" android:background="#0C0E12">

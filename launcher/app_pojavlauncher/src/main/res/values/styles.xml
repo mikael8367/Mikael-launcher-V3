@@ -39,7 +39,7 @@
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">match_parent</item>
     </style>
-
+</resources>
 <style name="MikaelPreferenceTheme" parent="@style/PreferenceThemeOverlay.v14.Material">
     <item name="preferenceStyle">@style/MikaelPreferenceStyle</item>
     <item name="switchPreferenceStyle">@style/MikaelSwitchPreferenceStyle</item>
@@ -56,5 +56,3 @@
     <item name="android:layout">@layout/mikael_seekbar_preference</item>
     <item name="showSeekBarValue">true</item>
 </style>
-
-</resources>

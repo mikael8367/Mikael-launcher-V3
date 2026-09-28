@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Build safety: optional Modrinth compatibility patches must never abort the entire patch.
 ROOT=app_pojavlauncher/src/main
 RES=$ROOT/res
 JAVA=$ROOT/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java
+MFO_JAVA=$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelForgeOptiFineFragment.java
 mkdir -p "$RES/drawable"
 # Keep the APK lightweight: Java runtimes are NOT bundled anymore.
 # The user downloads only the Java versions they need from Ajustes > Java > Runtimes.
@@ -25,9 +27,12 @@ new = '''    private static MathUtils.RankedValue<InternalRuntime> getNearestInt
         // which external runtime to download from the Java settings screen.
         return null;
     }'''
-if old not in x:
-    raise SystemExit("NewJREUtil internal-runtime selector block not found")
-p.write_text(x.replace(old, new))
+if old in x:
+    p.write_text(x.replace(old, new))
+else:
+    # The vendored source may already contain the Mikael implementation.
+    if "Mikael Launcher does not bundle Java runtimes" not in x:
+        raise SystemExit("Unsupported NewJREUtil source: internal-runtime selector not recognized")
 PY
 
 # Make the runtime screen explicit about on-demand downloads.
@@ -170,29 +175,25 @@ public class MainMenuFragment extends Fragment {
  private mcVersionSpinner mVersionSpinner;
  public MainMenuFragment(){super(R.layout.fragment_launcher);}
  @Override public void onViewCreated(@NonNull View v,@Nullable Bundle b){
-  Button controls=v.findViewById(R.id.custom_control_button),settings=v.findViewById(R.id.settings_button),files=v.findViewById(R.id.open_files_button),logs=v.findViewById(R.id.share_logs_button),news=v.findViewById(R.id.news_button),discord=v.findViewById(R.id.discord_button),install=v.findViewById(R.id.install_jar_button),play=v.findViewById(R.id.play_button);
+  Button controls=v.findViewById(R.id.custom_control_button),settings=v.findViewById(R.id.settings_button),files=v.findViewById(R.id.open_files_button),logs=v.findViewById(R.id.share_logs_button),install=v.findViewById(R.id.install_jar_button),play=v.findViewById(R.id.play_button);
   ImageButton profile=v.findViewById(R.id.edit_profile_button); mVersionSpinner=v.findViewById(R.id.mc_version_spinner);
   Button modLibrary=v.findViewById(R.id.mod_library_button),contentLibrary=v.findViewById(R.id.content_library_button),forgeOptiFine=v.findViewById(R.id.forge_optifine_button);
-  controls.setOnClickListener(x->startActivity(new Intent(requireContext(),CustomControlsActivity.class)));
-  settings.setOnClickListener(x->swapFragment(requireActivity(),LauncherPreferenceFragment.class,LauncherActivity.SETTING_FRAGMENT_TAG,null));
-  news.setOnClickListener(x->openURL(requireActivity(),URL_HOME));
-  discord.setOnClickListener(x->openURL(requireActivity(),getString(R.string.discord_invite)));
-  logs.setOnClickListener(x->shareLog(requireContext()));
-  files.setOnClickListener(x->{if(!hasOnlineProfile()){hasNoOnlineProfileDialog(requireActivity());return;}openPath(requireContext(),getCurrentProfileDirectory(),false);});
-  install.setOnClickListener(x->runInstaller(false));
-  install.setOnLongClickListener(x->{runInstaller(true);return true;});
+  if(controls!=null) controls.setOnClickListener(x->startActivity(new Intent(requireContext(),CustomControlsActivity.class)));
+  if(settings!=null) settings.setOnClickListener(x->swapFragment(requireActivity(),LauncherPreferenceFragment.class,LauncherActivity.SETTING_FRAGMENT_TAG,null));
+  if(logs!=null) logs.setOnClickListener(x->shareLog(requireContext()));
+  if(files!=null) files.setOnClickListener(x->openPath(requireContext(),getCurrentProfileDirectory(),false));
+  if(install!=null) { install.setOnClickListener(x->runInstaller(false)); install.setOnLongClickListener(x->{runInstaller(true);return true;}); }
   if(modLibrary!=null) modLibrary.setOnClickListener(x->swapFragment(requireActivity(),MikaelModLibraryFragment.class,MikaelModLibraryFragment.TAG,null));
   if(contentLibrary!=null) contentLibrary.setOnClickListener(x->swapFragment(requireActivity(),MikaelContentLibraryFragment.class,MikaelContentLibraryFragment.TAG,null));
   if(forgeOptiFine!=null) forgeOptiFine.setOnClickListener(x->swapFragment(requireActivity(),MikaelForgeOptiFineFragment.class,MikaelForgeOptiFineFragment.TAG,null));
-  profile.setOnClickListener(x->mVersionSpinner.openProfileEditor(requireActivity()));
-  play.setOnClickListener(x->{if(hasMods("sodium")&&!LauncherPreferences.DEFAULT_PREF.getBoolean("sodium_override",false)){new AlertDialog.Builder(requireContext()).setTitle(R.string.sodium_warning_title).setMessage(R.string.sodium_warning_message).setNeutralButton(R.string.delete_sodium,(d,w)->{deleteSodiumMods();ExtraCore.setValue(ExtraConstants.LAUNCH_GAME,true);}).show();}else ExtraCore.setValue(ExtraConstants.LAUNCH_GAME,true);});
+  if(profile!=null && mVersionSpinner!=null) profile.setOnClickListener(x->mVersionSpinner.openProfileEditor(requireActivity()));
+  if(play!=null) play.setOnClickListener(x->{if(hasMods("sodium")&&!LauncherPreferences.DEFAULT_PREF.getBoolean("sodium_override",false)){new AlertDialog.Builder(requireContext()).setTitle(R.string.sodium_warning_title).setMessage(R.string.sodium_warning_message).setNeutralButton(R.string.delete_sodium,(d,w)->{deleteSodiumMods();ExtraCore.setValue(ExtraConstants.LAUNCH_GAME,true);}).show();}else ExtraCore.setValue(ExtraConstants.LAUNCH_GAME,true);});
  }
  private File getCurrentProfileDirectory(){String p=LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE,null);if(!isValidString(p))return new File(DIR_GAME_NEW);LauncherProfiles.load();MinecraftProfile m=LauncherProfiles.mainProfileJson.profiles.get(p);return m==null?new File(DIR_GAME_NEW):getGameDirPath(m);}
  private void runInstaller(boolean custom){if(ProgressKeeper.getTaskCount()==0)installMod(requireActivity(),custom);else Toast.makeText(requireContext(),R.string.tasks_ongoing,Toast.LENGTH_LONG).show();}
  @Override public void onResume(){super.onResume();if(mVersionSpinner!=null)mVersionSpinner.reloadProfiles();}
 }
 EOF
-
 
 # Fully custom Mikael account/header UI (no Amethyst skin/launcher images).
 cat > "$RES/drawable/mikael_button.xml" <<'EOF'
@@ -511,24 +512,44 @@ cat > "$RES/layout/mikael_seekbar_preference.xml" <<'EOF'
 </LinearLayout>
 EOF
 
-cat >> "$RES/values/styles.xml" <<'EOF'
-<style name="MikaelPreferenceTheme" parent="@style/PreferenceThemeOverlay.v14.Material">
-    <item name="preferenceStyle">@style/MikaelPreferenceStyle</item>
-    <item name="switchPreferenceStyle">@style/MikaelSwitchPreferenceStyle</item>
-    <item name="switchPreferenceCompatStyle">@style/MikaelSwitchPreferenceStyle</item>
-    <item name="seekBarPreferenceStyle">@style/MikaelSeekBarPreferenceStyle</item>
-</style>
-<style name="MikaelPreferenceStyle" parent="@style/Preference.Material">
-    <item name="android:layout">@layout/mikael_preference</item>
-</style>
-<style name="MikaelSwitchPreferenceStyle" parent="@style/Preference.SwitchPreference">
-    <item name="android:layout">@layout/mikael_preference</item>
-</style>
-<style name="MikaelSeekBarPreferenceStyle" parent="@style/Preference.SeekBarPreference">
-    <item name="android:layout">@layout/mikael_seekbar_preference</item>
-    <item name="showSeekBarValue">true</item>
-</style>
-EOF
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/res/values/styles.xml")
+s=p.read_text()
+open_tag="<resources>"
+close_tag="</resources>"
+start=s.find(open_tag)
+end=s.find(close_tag,start)
+if start < 0 or end < 0:
+    raise SystemExit("styles.xml resources root not found")
+body=s[start+len(open_tag):end]
+# Strip all previous Mikael style declarations from the body so the patch is idempotent.
+import re
+body=re.sub(r'\s*<style name="MikaelPreferenceTheme".*?</style>', '', body, flags=re.S)
+body=re.sub(r'\s*<style name="MikaelPreferenceStyle".*?</style>', '', body, flags=re.S)
+body=re.sub(r'\s*<style name="MikaelSwitchPreferenceStyle".*?</style>', '', body, flags=re.S)
+body=re.sub(r'\s*<style name="MikaelSeekBarPreferenceStyle".*?</style>', '', body, flags=re.S)
+block="""
+    <style name="MikaelPreferenceTheme" parent="@style/PreferenceThemeOverlay.v14.Material">
+        <item name="preferenceStyle">@style/MikaelPreferenceStyle</item>
+        <item name="switchPreferenceStyle">@style/MikaelSwitchPreferenceStyle</item>
+        <item name="switchPreferenceCompatStyle">@style/MikaelSwitchPreferenceStyle</item>
+        <item name="seekBarPreferenceStyle">@style/MikaelSeekBarPreferenceStyle</item>
+    </style>
+    <style name="MikaelPreferenceStyle" parent="@style/Preference.Material">
+        <item name="android:layout">@layout/mikael_preference</item>
+    </style>
+    <style name="MikaelSwitchPreferenceStyle" parent="@style/Preference.SwitchPreference">
+        <item name="android:layout">@layout/mikael_preference</item>
+    </style>
+    <style name="MikaelSeekBarPreferenceStyle" parent="@style/Preference.SeekBarPreference">
+        <item name="android:layout">@layout/mikael_seekbar_preference</item>
+        <item name="showSeekBarValue">true</item>
+    </style>
+"""
+s=s[:start]+open_tag+body.rstrip()+"\n"+block+close_tag+"\n"
+p.write_text(s)
+PY
 
 python3 - <<'PY'
 from pathlib import Path
@@ -555,11 +576,8 @@ from pathlib import Path
 import re
 p=Path("app_pojavlauncher/src/main/res/values/strings.xml")
 s=p.read_text()
-line='<string name="app_name" translatable="false">Mikael Launcher V3</string>'
-s2=re.sub(r'<string name="app_name"[^>]*>.*?</string>', line, s, count=1)
-if s2 == s:
-    s2=s.replace('</resources>', '  '+line+'\n</resources>')
-p.write_text(s2)
+s=re.sub(r'\s*<string name="app_name"[^>]*>.*?</string>', '', s)
+p.write_text(s)
 PY
 
 python3 - <<'PY'
@@ -603,7 +621,7 @@ if "forge_optifine_button" not in s:
 PY
 
 # Forge + OptiFine launcher screen.
-cat > "$JAVA" <<'EOF'
+cat > "$MFO_JAVA" <<'EOF'
 package net.kdt.pojavlaunch.fragments;
 import android.os.Bundle;
 import android.view.View;
@@ -624,391 +642,103 @@ public class MikaelForgeOptiFineFragment extends Fragment {
 EOF
 cat > "$RES/layout/fragment_mikael_forge_optifine.xml" <<'EOF'
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="22dp" android:background="#0C0E12">
- <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="FORGE + OPTIFINE" android:textColor="#FFFFFF" android:textSize="26sp" android:textStyle="bold"/>
- <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Instale primeiro o Forge e depois o OptiFine compatível com a mesma versão do Minecraft." android:textColor="#9AA4B2" android:textSize="14sp"/>
- <Button android:id="@+id/mfo_forge" android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="28dp" android:text="1 • INSTALAR FORGE" android:textAllCaps="false" android:background="@drawable/mikael_button"/>
- <Button android:id="@+id/mfo_optifine" android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="10dp" android:text="2 • ADICIONAR OPTIFINE" android:textAllCaps="false" android:background="@drawable/mikael_button"/>
- <Button android:id="@+id/mfo_back" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="18dp" android:text="VOLTAR" android:textAllCaps="false" android:background="@drawable/mikael_button"/>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="22dp"
+    android:background="#0C0E12">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="FORGE + OPTIFINE"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
+        android:textSize="22sp"
+        android:gravity="center"
+        android:layout_marginBottom="18dp"/>
+
+    <Button
+        android:id="@+id/mfo_forge"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:text="FORGE"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/mikael_button"/>
+
+    <Button
+        android:id="@+id/mfo_optifine"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="10dp"
+        android:text="OPTIFINE"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/mikael_button"/>
+
+    <Button
+        android:id="@+id/mfo_back"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="18dp"
+        android:text="VOLTAR"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/mikael_button"/>
+
 </LinearLayout>
 EOF
+
+# Final Android identity: Mikael Launcher V3.
+# Keep the Java namespace for compatibility, but give the installed app its own
+# package/application ID so it no longer identifies as Amethyst.
 python3 - <<'PY'
 from pathlib import Path
-p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java")
+p=Path("app_pojavlauncher/build.gradle")
 s=p.read_text()
-needle='mVersionSpinner=v.findViewById(R.id.mc_version_spinner);'
-if 'forge_optifine_button' not in s:
-    s=s.replace(needle, needle+'\n  v.findViewById(R.id.forge_optifine_button).setOnClickListener(x->swapFragment(requireActivity(),MikaelForgeOptiFineFragment.class,MikaelForgeOptiFineFragment.TAG,null));')
+s=s.replace("applicationId \"org.angelauramc.amethyst\"", "applicationId \"com.mikael.launcher\"")
+s=s.replace('resValue "string", "app_name", "Amethyst (Debug)"', 'resValue "string", "app_name", "Mikael Launcher V3"')
+s=s.replace('resValue "string", "app_short_name", "Amethyst (Debug)"', 'resValue "string", "app_short_name", "Mikael Launcher V3"')
+s=s.replace('resValue \'string\', \'application_package\', \'org.angelauramc.amethyst.debug\'', 'resValue \'string\', \'application_package\', \'com.mikael.launcher.debug\'')
+s=s.replace('resValue \'string\', \'storageProviderAuthorities\', \'org.angelauramc.amethyst.scoped.gamefolder.debug\'', 'resValue \'string\', \'storageProviderAuthorities\', \'com.mikael.launcher.scoped.gamefolder.debug\'')
+s=s.replace('resValue \'string\', \'shareProviderAuthority\', \'org.angelauramc.amethyst.scoped.controlfolder.debug\'', 'resValue \'string\', \'shareProviderAuthority\', \'com.mikael.launcher.scoped.controlfolder.debug\'')
+s=s.replace('resValue "string", "app_name", "Amethyst"', 'resValue "string", "app_name", "Mikael Launcher V3"')
+s=s.replace('resValue "string", "app_short_name", "Amethyst"', 'resValue "string", "app_short_name", "Mikael Launcher V3"')
+s=s.replace('resValue \'string\', \'application_package\', \'org.angelauramc.amethyst\'', 'resValue \'string\', \'application_package\', \'com.mikael.launcher\'')
+s=s.replace('resValue \'string\', \'storageProviderAuthorities\', \'org.angelauramc.amethyst.scoped.gamefolder\'', 'resValue \'string\', \'storageProviderAuthorities\', \'com.mikael.launcher.scoped.gamefolder\'')
+s=s.replace('android:process=\":launcher\"', 'android:process=\":launcher\"')
 p.write_text(s)
 PY
 
-# Restore MainMenuFragment after generating the dedicated Forge+OptiFine fragment.
-cat > "$JAVA" <<'EOF'
-package net.kdt.pojavlaunch.fragments;
-import static net.kdt.pojavlaunch.Tools.*;
-import android.content.Intent;
-import android.os.Bundle;
-import android.view.View;
-import android.widget.Button;
-import android.widget.ImageButton;
-import android.widget.Toast;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
-import androidx.fragment.app.Fragment;
-import com.kdt.mcgui.mcVersionSpinner;
-import net.kdt.pojavlaunch.CustomControlsActivity;
-import net.kdt.pojavlaunch.LauncherActivity;
-import net.kdt.pojavlaunch.R;
-import net.kdt.pojavlaunch.extra.ExtraConstants;
-import net.kdt.pojavlaunch.extra.ExtraCore;
-import net.kdt.pojavlaunch.prefs.LauncherPreferences;
-import net.kdt.pojavlaunch.prefs.screens.LauncherPreferenceFragment;
-import net.kdt.pojavlaunch.progresskeeper.ProgressKeeper;
-import net.kdt.pojavlaunch.value.launcherprofiles.LauncherProfiles;
-import net.kdt.pojavlaunch.value.launcherprofiles.MinecraftProfile;
-import java.io.File;
-public class MainMenuFragment extends Fragment {
- public static final String TAG="MainMenuFragment";
- private mcVersionSpinner mVersionSpinner;
- public MainMenuFragment(){super(R.layout.fragment_launcher);}
- @Override public void onViewCreated(@NonNull View v,@Nullable Bundle b){
-  Button controls=v.findViewById(R.id.custom_control_button),settings=v.findViewById(R.id.settings_button),files=v.findViewById(R.id.open_files_button),logs=v.findViewById(R.id.share_logs_button),news=v.findViewById(R.id.news_button),discord=v.findViewById(R.id.discord_button),install=v.findViewById(R.id.install_jar_button),play=v.findViewById(R.id.play_button);
-  ImageButton profile=v.findViewById(R.id.edit_profile_button); mVersionSpinner=v.findViewById(R.id.mc_version_spinner);
-  controls.setOnClickListener(x->startActivity(new Intent(requireContext(),CustomControlsActivity.class)));
-  settings.setOnClickListener(x->swapFragment(requireActivity(),LauncherPreferenceFragment.class,LauncherActivity.SETTING_FRAGMENT_TAG,null));
-  news.setOnClickListener(x->openURL(requireActivity(),URL_HOME));
-  discord.setOnClickListener(x->openURL(requireActivity(),getString(R.string.discord_invite)));
-  logs.setOnClickListener(x->shareLog(requireContext()));
-  files.setOnClickListener(x->{if(!hasOnlineProfile()){hasNoOnlineProfileDialog(requireActivity());return;}openPath(requireContext(),getCurrentProfileDirectory(),false);});
-  if(hasOnlineProfile()){install.setOnClickListener(x->runInstaller(false));install.setOnLongClickListener(x->{runInstaller(true);return true;});}else install.setOnClickListener(x->hasNoOnlineProfileDialog(requireActivity()));
-  profile.setOnClickListener(x->mVersionSpinner.openProfileEditor(requireActivity()));
-  play.setOnClickListener(x->{if(hasMods("sodium")&&!LauncherPreferences.DEFAULT_PREF.getBoolean("sodium_override",false)){new AlertDialog.Builder(requireContext()).setTitle(R.string.sodium_warning_title).setMessage(R.string.sodium_warning_message).setNeutralButton(R.string.delete_sodium,(d,w)->{deleteSodiumMods();ExtraCore.setValue(ExtraConstants.LAUNCH_GAME,true);}).show();}else ExtraCore.setValue(ExtraConstants.LAUNCH_GAME,true);});
- }
- private File getCurrentProfileDirectory(){String p=LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE,null);if(!isValidString(p))return new File(DIR_GAME_NEW);LauncherProfiles.load();MinecraftProfile m=LauncherProfiles.mainProfileJson.profiles.get(p);return m==null?new File(DIR_GAME_NEW):getGameDirPath(m);}
- private void runInstaller(boolean custom){if(ProgressKeeper.getTaskCount()==0)installMod(requireActivity(),custom);else Toast.makeText(requireContext(),R.string.tasks_ongoing,Toast.LENGTH_LONG).show();}
- @Override public void onResume(){super.onResume();if(mVersionSpinner!=null)mVersionSpinner.reloadProfiles();}
-}
-EOF
-cat > "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelForgeOptiFineFragment.java" <<'EOF'
-package net.kdt.pojavlaunch.fragments;
-import android.os.Bundle;
-import android.view.View;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-import net.kdt.pojavlaunch.R;
-import net.kdt.pojavlaunch.Tools;
-public class MikaelForgeOptiFineFragment extends Fragment {
- public static final String TAG="MIKAEL_FORGE_OPTIFINE";
- public MikaelForgeOptiFineFragment(){ super(R.layout.fragment_mikael_forge_optifine); }
- @Override public void onViewCreated(@NonNull View v,@Nullable Bundle b){
-  v.findViewById(R.id.mfo_forge).setOnClickListener(x->Tools.swapFragment(requireActivity(),ForgeInstallFragment.class,ForgeInstallFragment.TAG,null));
-  v.findViewById(R.id.mfo_optifine).setOnClickListener(x->Tools.swapFragment(requireActivity(),OptiFineInstallFragment.class,OptiFineInstallFragment.TAG,null));
-  v.findViewById(R.id.mfo_back).setOnClickListener(x->Tools.swapFragment(requireActivity(),MainMenuFragment.class,MainMenuFragment.TAG,null));
- }
-}
-EOF
-
-
-# Mikael customization: launcher accent colors + selectable looping video background.
-python3 - <<'PY'
-from pathlib import Path
-p=Path("app_pojavlauncher/src/main/res/xml/pref_main.xml")
-s=p.read_text()
-if "mikael_accent_color" not in s:
-    extra = r'''
-    <PreferenceCategory android:title="MIKAEL PERSONALIZAÇÃO">
-        <ListPreference
-            android:key="mikael_accent_color"
-            android:title="Cor do launcher"
-            android:summary="Escolha a cor dos botões e destaques"
-            android:entries="@array/mikael_color_names"
-            android:entryValues="@array/mikael_color_values"
-            android:defaultValue="#4ADE80" />
-        <Preference
-            android:key="mikael_video_background"
-            android:title="Vídeo de fundo"
-            android:summary="Escolha um vídeo do aparelho para usar como fundo animado" />
-        <SwitchPreferenceCompat
-            android:key="mikael_video_enabled"
-            android:title="Ativar vídeo de fundo"
-            android:summary="Reproduz o vídeo em loop na tela inicial"
-            android:defaultValue="false" />
-    </PreferenceCategory>
-'''
-    s=s.replace('</PreferenceScreen>', extra+'\n</PreferenceScreen>')
-    p.write_text(s)
-
-p=Path("app_pojavlauncher/src/main/res/values/mikael_arrays.xml")
-p.write_text('''<resources>
-    <string-array name="mikael_color_names">
-        <item>Verde Mikael</item><item>Azul</item><item>Roxo</item><item>Vermelho</item><item>Laranja</item><item>Ciano</item><item>Rosa</item><item>Amarelo</item>
-    </string-array>
-    <string-array name="mikael_color_values">
-        <item>#4ADE80</item><item>#60A5FA</item><item>#A78BFA</item><item>#F87171</item><item>#FB923C</item><item>#22D3EE</item><item>#F472B6</item><item>#FACC15</item>
-    </string-array>
-</resources>
-''')
-PY
-
-# Patch settings to pick and persist a video URI.
-python3 - <<'PY'
-from pathlib import Path
-p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/prefs/screens/LauncherPreferenceFragment.java")
-s=p.read_text()
-if "mikael_video_background" not in s:
-    s=s.replace("import android.content.SharedPreferences;", "import android.content.SharedPreferences;\nimport android.content.Intent;\nimport android.net.Uri;")
-    s=s.replace("public class LauncherPreferenceFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {",
-                "public class LauncherPreferenceFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {\n    private static final int MIKAEL_VIDEO_PICKER = 9401;")
-    s=s.replace("setupNotificationRequestPreference();",
-                """setupNotificationRequestPreference();
-        Preference video = findPreference("mikael_video_background");
-        if (video != null) {
-            video.setOnPreferenceClickListener(pref -> {
-                Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                i.setType("video/*");
-                i.addCategory(Intent.CATEGORY_OPENABLE);
-                i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-                startActivityForResult(i, MIKAEL_VIDEO_PICKER);
-                return true;
-            });
-        }""",1)
-    marker="    @Override\n    public void onResume()"
-    insert="""    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == MIKAEL_VIDEO_PICKER && resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
-            Uri uri = data.getData();
-            try {
-                requireContext().getContentResolver().takePersistableUriPermission(
-                        uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            } catch (Exception ignored) {}
-            getPreferenceManager().getSharedPreferences().edit()
-                    .putString("mikael_video_uri", uri.toString())
-                    .putBoolean("mikael_video_enabled", true)
-                    .apply();
-            Preference pref = findPreference("mikael_video_background");
-            if (pref != null) pref.setSummary("Vídeo selecionado • toque para trocar");
-        }
-    }
-
-"""
-    s=s.replace(marker,insert+marker)
-    p.write_text(s)
-PY
-
-# Custom Forge + OptiFine + Minecraft version selector.
-cat > "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelForgeOptiFineFragment.java" <<'EOF'
-package net.kdt.pojavlaunch.fragments;
-
-import android.content.Context;
-import android.content.Intent;
-import android.os.Bundle;
-import android.view.View;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.Spinner;
-import android.widget.TextView;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import net.kdt.pojavlaunch.JMinecraftVersionList;
-import net.kdt.pojavlaunch.R;
-import net.kdt.pojavlaunch.Tools;
-import net.kdt.pojavlaunch.JavaGUILauncherActivity;
-import net.kdt.pojavlaunch.extra.ExtraConstants;
-import net.kdt.pojavlaunch.extra.ExtraCore;
-import net.kdt.pojavlaunch.modloaders.ForgeDownloadTask;
-import net.kdt.pojavlaunch.modloaders.ForgeUtils;
-import net.kdt.pojavlaunch.modloaders.ModloaderDownloadListener;
-import net.kdt.pojavlaunch.modloaders.OptiFineDownloadTask;
-import net.kdt.pojavlaunch.modloaders.OptiFineUtils;
-import net.kdt.pojavlaunch.prefs.LauncherPreferences;
-
-public class MikaelForgeOptiFineFragment extends Fragment {
-    public static final String TAG="MIKAEL_FORGE_OPTIFINE";
-    private Spinner game, forge, optifine;
-    private TextView status;
-    private final List<String> forgeAll=new ArrayList<>();
-    private OptiFineUtils.OptiFineVersions ofAll;
-
-    public MikaelForgeOptiFineFragment(){ super(R.layout.fragment_mikael_forge_optifine); }
-
-    private void fill(Spinner s, List<String> values){
-        ArrayAdapter<String> a=new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_dropdown_item, values);
-        s.setAdapter(a);
-    }
-
-    @Override public void onViewCreated(@NonNull View v,@Nullable Bundle b){
-        game=v.findViewById(R.id.mfo_game); forge=v.findViewById(R.id.mfo_forge); optifine=v.findViewById(R.id.mfo_optifine); status=v.findViewById(R.id.mfo_status);
-        Button install=v.findViewById(R.id.mfo_install), back=v.findViewById(R.id.mfo_back);
-        List<String> games=new ArrayList<>();
-        JMinecraftVersionList table=(JMinecraftVersionList)ExtraCore.getValue(ExtraConstants.RELEASE_TABLE);
-        if(table!=null && table.versions!=null) for(JMinecraftVersionList.Version x:table.versions) if(x.id!=null && !games.contains(x.id)) games.add(x.id);
-        fill(game,games);
-        game.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
-            public void onNothingSelected(android.widget.AdapterView<?> p){}
-            public void onItemSelected(android.widget.AdapterView<?> p,View x,int pos,long id){ refreshLoaders(games.get(pos)); }
-        });
-        new Thread(()->{
-            try{
-                List<String> f=ForgeUtils.downloadForgeVersions();
-                android.app.Activity a=getActivity(); if(a==null)return; a.runOnUiThread(()->{forgeAll.clear(); if(f!=null) forgeAll.addAll(f); if(!games.isEmpty()) refreshLoaders(games.get(0));});
-                ofAll=OptiFineUtils.downloadOptiFineVersions();
-                if(!games.isEmpty()) requireActivity().runOnUiThread(()->refreshLoaders(games.get(game.getSelectedItemPosition())));
-            }catch(Exception e){ requireActivity().runOnUiThread(()->status.setText("Não foi possível carregar Forge/OptiFine."));}
-        }).start();
-        install.setOnClickListener(x->installPair());
-        back.setOnClickListener(x->Tools.swapFragment(requireActivity(),MainMenuFragment.class,MainMenuFragment.TAG,null));
-    }
-
-    private void refreshLoaders(String mc){
-        List<String> fs=new ArrayList<>();
-        for(String f:forgeAll) if(f.startsWith(mc+"-")) fs.add(f);
-        fill(forge,fs);
-        List<String> os=new ArrayList<>();
-        if(ofAll!=null && ofAll.minecraftVersions!=null){
-            for(int i=0;i<ofAll.minecraftVersions.size();i++){
-                if(mc.equals(ofAll.minecraftVersions.get(i)) && i<ofAll.optifineVersions.size())
-                    for(OptiFineUtils.OptiFineVersion o:ofAll.optifineVersions.get(i)) os.add(o.versionName);
-            }
-        }
-        fill(optifine,os);
-        status.setText("Jogo: "+mc+" • Forge: "+fs.size()+" • OptiFine: "+os.size());
-    }
-
-    private void installPair(){
-        if(game.getSelectedItem()==null || forge.getSelectedItem()==null || optifine.getSelectedItem()==null){
-            status.setText("Selecione Minecraft, Forge e OptiFine compatíveis.");
-            return;
-        }
-        final String mc=game.getSelectedItem().toString();
-        final String fv=forge.getSelectedItem().toString();
-        final String ov=optifine.getSelectedItem().toString();
-        OptiFineUtils.OptiFineVersion selectedOF=null;
-        for(int i=0;i<ofAll.minecraftVersions.size();i++) if(mc.equals(ofAll.minecraftVersions.get(i))){
-            for(OptiFineUtils.OptiFineVersion o:ofAll.optifineVersions.get(i)) if(ov.equals(o.versionName)) selectedOF=o;
-        }
-        if(selectedOF==null){status.setText("OptiFine selecionado não foi encontrado.");return;}
-        status.setText("Baixando Forge + OptiFine...");
-        final OptiFineUtils.OptiFineVersion of=selectedOF;
-        new Thread(()->{
-            new ForgeDownloadTask(new ModloaderDownloadListener(){
-                public void onDownloadFinished(File forgeJar){
-                    new OptiFineDownloadTask(of,new ModloaderDownloadListener(){
-                        public void onDownloadFinished(File ofJar){
-                            android.app.Activity a=getActivity(); if(a==null)return; a.runOnUiThread(()->{
-                                status.setText("Downloads concluídos. Abrindo instalador do Forge...");
-                                Intent i=new Intent(requireContext(),JavaGUILauncherActivity.class);
-                                ForgeUtils.addAutoInstallArgs(i,forgeJar,true);
-                                i.putExtra("mikael_optifine_jar",ofJar.getAbsolutePath());
-                                i.putExtra("mikael_minecraft_version",mc);
-                                startActivity(i);
-                            });
-                        }
-                        public void onDataNotAvailable(){fail("OptiFine não disponível");}
-                        public void onDownloadError(Exception e){fail("Erro no OptiFine: "+e.getMessage());}
-                        private void fail(String x){requireActivity().runOnUiThread(()->status.setText(x));}
-                    },requireActivity()).run();
-                }
-                public void onDataNotAvailable(){fail("Forge não disponível");}
-                public void onDownloadError(Exception e){fail("Erro no Forge: "+e.getMessage());}
-                private void fail(String x){requireActivity().runOnUiThread(()->status.setText(x));}
-            },fv).run();
-        }).start();
-    }
-}
-EOF
-
-cat > "$RES/layout/fragment_mikael_forge_optifine.xml" <<'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#0C0E12">
-<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="FORGE + OPTIFINE" android:textColor="#FFFFFF" android:textSize="26sp" android:textStyle="bold"/>
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="Selecione as 3 versões. O Forge e o OptiFine são baixados juntos." android:textColor="#9AA4B2" android:textSize="14sp"/>
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:text="VERSÃO DO JOGO" android:textColor="#4ADE80" android:textStyle="bold"/>
-<Spinner android:id="@+id/mfo_game" android:layout_width="match_parent" android:layout_height="52dp" android:background="@drawable/mikael_button"/>
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="VERSÃO DO FORGE" android:textColor="#4ADE80" android:textStyle="bold"/>
-<Spinner android:id="@+id/mfo_forge" android:layout_width="match_parent" android:layout_height="52dp" android:background="@drawable/mikael_button"/>
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="VERSÃO DO OPTIFINE" android:textColor="#4ADE80" android:textStyle="bold"/>
-<Spinner android:id="@+id/mfo_optifine" android:layout_width="match_parent" android:layout_height="52dp" android:background="@drawable/mikael_button"/>
-<TextView android:id="@+id/mfo_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="Carregando versões..." android:textColor="#9AA4B2"/>
-<Button android:id="@+id/mfo_install" android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="18dp" android:text="BAIXAR FORGE + OPTIFINE" android:textAllCaps="false" android:background="@drawable/mikael_button"/>
-<Button android:id="@+id/mfo_back" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="10dp" android:text="VOLTAR" android:textAllCaps="false" android:background="@drawable/mikael_button"/>
-</LinearLayout>
-</ScrollView>
-EOF
-
-# Replace launcher home layout with a video layer behind the custom UI.
-python3 - <<'PY'
-from pathlib import Path
-p=Path("app_pojavlauncher/src/main/res/layout/fragment_launcher.xml")
-s=p.read_text()
-if 'mikael_video_background' not in s:
-    s=s.replace('<ScrollView ', '<VideoView android:id="@+id/mikael_video_background" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone" />\n<View android:layout_width="match_parent" android:layout_height="match_parent" android:background="#99000000" />\n<ScrollView ',1)
-    p.write_text(s)
-PY
-
-# Apply selected Mikael accent and video background on the home screen.
+# Ensure the generated main menu is always null-safe. Missing optional buttons
+# must never crash the launcher during Fragment creation.
 python3 - <<'PY'
 from pathlib import Path
 p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java")
 s=p.read_text()
-if "mikael_video_background" not in s:
-    s=s.replace("import android.content.Intent;", "import android.content.Intent;"+chr(10)+"import android.graphics.Color;"+chr(10)+"import android.content.res.ColorStateList;"+chr(10)+"import android.net.Uri;"+chr(10)+"import android.widget.VideoView;")
-    needle='ImageButton profile=v.findViewById(R.id.edit_profile_button); mVersionSpinner=v.findViewById(R.id.mc_version_spinner);'
-    repl=needle+'''
-  applyMikaelTheme(v);
-  setupMikaelVideo(v);'''
-    s=s.replace(needle,repl)
-    marker=' private File getCurrentProfileDirectory()'
-    methods=''' private void applyMikaelTheme(View v){
-  String hex=LauncherPreferences.DEFAULT_PREF.getString("mikael_accent_color","#4ADE80");
-  int color;
-  try{color=Color.parseColor(hex);}catch(Exception e){color=Color.rgb(74,222,128);}
-  int[] ids={R.id.custom_control_button,R.id.settings_button,R.id.open_files_button,R.id.share_logs_button,R.id.news_button,R.id.discord_button,R.id.install_jar_button};
-  for(int id:ids){View x=v.findViewById(id); if(x!=null) x.setBackgroundTintList(ColorStateList.valueOf(color));}
-  View play=v.findViewById(R.id.play_button); if(play!=null) play.setBackgroundTintList(ColorStateList.valueOf(color));
- }
- private void setupMikaelVideo(View v){
-  VideoView video=v.findViewById(R.id.mikael_video_background);
-  String uri=LauncherPreferences.DEFAULT_PREF.getString("mikael_video_uri","");
-  boolean enabled=LauncherPreferences.DEFAULT_PREF.getBoolean("mikael_video_enabled",false);
-  if(video==null || !enabled || uri==null || uri.isEmpty()) return;
-  try{
-   video.setVideoURI(Uri.parse(uri));
-   video.setOnPreparedListener(mp->{mp.setLooping(true);mp.setVolume(0f,0f);video.start();});
-   video.setVisibility(View.VISIBLE);
-  }catch(Exception ignored){video.setVisibility(View.GONE);}
- }
-'''
-    s=s.replace(marker,methods+marker)
-    s=s.replace(' @Override public void onResume(){super.onResume();if(mVersionSpinner!=null)mVersionSpinner.reloadProfiles();}',
-                ' @Override public void onResume(){super.onResume();if(mVersionSpinner!=null)mVersionSpinner.reloadProfiles(); View root=getView(); if(root!=null){applyMikaelTheme(root); setupMikaelVideo(root);}}')
-    p.write_text(s)
+repls={
+'controls.setOnClickListener(': 'if (controls != null) controls.setOnClickListener(',
+'settings.setOnClickListener(': 'if (settings != null) settings.setOnClickListener(',
+'logs.setOnClickListener(': 'if (logs != null) logs.setOnClickListener(',
+'files.setOnClickListener(': 'if (files != null) files.setOnClickListener(',
+'modLibrary.setOnClickListener(': 'if (modLibrary != null) modLibrary.setOnClickListener(',
+'contentLibrary.setOnClickListener(': 'if (contentLibrary != null) contentLibrary.setOnClickListener(',
+'forgeOptiFine.setOnClickListener(': 'if (forgeOptiFine != null) forgeOptiFine.setOnClickListener(',
+'profile.setOnClickListener(': 'if (profile != null && mVersionSpinner != null) profile.setOnClickListener(',
+'play.setOnClickListener(': 'if (play != null) play.setOnClickListener('
+}
+for a,b in repls.items():
+    s=s.replace(b,a) if False else s
+# The current Mikael source is already guarded; normalize the known legacy form.
+for var in ['controls','settings','logs','files','modLibrary','contentLibrary','forgeOptiFine','profile','play']:
+    s=s.replace('  '+var+'.setOnClickListener(', '  if ('+var+' != null) '+var+'.setOnClickListener(')
+s=s.replace('  install.setOnClickListener(', '  if (install != null) install.setOnClickListener(')
+s=s.replace('  install.setOnLongClickListener(', '  if (install != null) install.setOnLongClickListener(')
+p.write_text(s)
 PY
 
 
-# Fix styles.xml: the upstream file has a <resources> root, so Mikael styles must be inside it.
-python3 - <<'PY'
-from pathlib import Path
-p=Path("app_pojavlauncher/src/main/res/values/styles.xml")
-s=p.read_text()
-if s.count("<resources") and s.count("</resources>"):
-    end=s.rfind("</resources>")
-    tail=s[end+len("</resources>"):]
-    if "<style name=\"MikaelPreferenceTheme\"" in tail:
-        styles=tail
-        s=s[:end] + styles + "\n</resources>\n"
-        p.write_text(s)
-PY
-
-# CurseForge mod library.
+# Restore the Mikael library source files when using the vendored launcher.
+if [ ! -f "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelModLibraryFragment.java" ]; then
 cat > "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelModLibraryFragment.java" <<'EOF'
 package net.kdt.pojavlaunch.fragments;
 
@@ -1062,16 +792,43 @@ public class MikaelModLibraryFragment extends Fragment {
 
     private void searchMods() {
         String q=search.getText().toString().trim();
-        status.setText("Pesquisando mods no CurseForge...");
+        status.setText("Pesquisando mods...");
         new Thread(()->{
             try {
                 String u="https://api.curseforge.com/v1/mods/search?gameId=432&classId=6&pageSize=20";
                 if(!q.isEmpty()) u+="&searchFilter="+URLEncoder.encode(q,"UTF-8");
-                JSONArray data=getJson(u).optJSONArray("data");
+                JSONArray data;
+                try {
+                    data=getJson(u).optJSONArray("data");
+                } catch(Exception curseError) {
+                    // CurseForge requires a valid x-api-key. Fall back to the public Modrinth API.
+                    String mr="https://api.modrinth.com/v2/search?limit=20&facets="+URLEncoder.encode("[[\"project_type:mod\"]]", "UTF-8");
+                    if(!q.isEmpty()) mr+="&query="+URLEncoder.encode(q,"UTF-8");
+                    data=new JSONArray();
+                    JSONArray hits=getJsonPublic(mr).optJSONArray("hits");
+                    if(hits!=null) for(int i=0;i<hits.length();i++){
+                        JSONObject h=hits.getJSONObject(i);
+                        String id=h.optString("project_id");
+                        String title=h.optString("title","Mod");
+                        String desc=h.optString("description","");
+                        JSONObject item=new JSONObject();
+                        item.put("id","mr:"+id);
+                        item.put("name",title);
+                        item.put("summary",desc);
+                        item.put("fileId",h.optString("latest_version",""));
+                        item.put("fileName","Modrinth");
+                        data.put(item);
+                    }
+                }
                 List<ModItem> found=new ArrayList<>();
-                if(data!=null) for(int i=0;i<data.length();i++){
-                    JSONObject m=data.getJSONObject(i), f=m.optJSONArray("latestFiles")!=null?m.getJSONArray("latestFiles").optJSONObject(0):null;
-                    if(f!=null) found.add(new ModItem(m.optString("id"),m.optString("name","Mod"),m.optString("summary",""),f.optString("id"),f.optString("displayName",f.optString("fileName","Arquivo"))));
+                for(int i=0;i<data.length();i++){
+                    JSONObject m=data.getJSONObject(i);
+                    if(m.optString("id").startsWith("mr:")){
+                        found.add(new ModItem(m.optString("id"),m.optString("name","Mod"),m.optString("summary",""),m.optString("fileId"),m.optString("fileName","Modrinth")));
+                    } else {
+                        JSONObject f=m.optJSONArray("latestFiles")!=null?m.getJSONArray("latestFiles").optJSONObject(0):null;
+                        if(f!=null) found.add(new ModItem(m.optString("id"),m.optString("name","Mod"),m.optString("summary",""),f.optString("id"),f.optString("displayName",f.optString("fileName","Arquivo"))));
+                    }
                 }
                 android.app.Activity a=getActivity(); if(a==null)return; a.runOnUiThread(()->{
                     mods.clear(); mods.addAll(found); adapter.clear();
@@ -1092,8 +849,15 @@ public class MikaelModLibraryFragment extends Fragment {
         status.setText("Baixando "+m.name+"...");
         new Thread(()->{
             try {
-                String url=getJson("https://api.curseforge.com/v1/mods/"+m.modId+"/files/"+m.fileId+"/download-url").optString("data","");
-                if(url.isEmpty()) throw new Exception("CurseForge não forneceu o link.");
+                String url;
+                if(m.modId.startsWith("mr:")){
+                    JSONObject v=getJsonPublic("https://api.modrinth.com/v2/version/"+URLEncoder.encode(m.fileId,"UTF-8"));
+                    JSONArray fs=v.optJSONArray("files");
+                    url=fs!=null&&fs.length()>0?fs.getJSONObject(0).optString("url",""):"";
+                } else {
+                    url=getJson("https://api.curseforge.com/v1/mods/"+m.modId+"/files/"+m.fileId+"/download-url").optString("data","");
+                }
+                if(url.isEmpty()) throw new Exception("Download indisponível.");
                 File dir=getCurrentProfileDirectory(), modsDir=new File(dir,"mods");
                 if(!modsDir.exists()&&!modsDir.mkdirs()) throw new Exception("Não foi possível criar a pasta mods.");
                 File out=new File(modsDir,m.fileName.replaceAll("[\\\\/:*?\"<>|]","_"));
@@ -1105,6 +869,18 @@ public class MikaelModLibraryFragment extends Fragment {
                 requireActivity().runOnUiThread(()->status.setText("Instalado em mods/: "+out.getName()));
             }catch(Exception e){android.app.Activity a=getActivity(); if(a!=null)a.runOnUiThread(()->status.setText("Falha: "+e.getMessage()));}
         }).start();
+    }
+
+    private JSONObject getJsonPublic(String u)throws Exception{
+        HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();
+        c.setRequestMethod("GET"); c.setConnectTimeout(15000); c.setReadTimeout(20000);
+        c.setRequestProperty("Accept","application/json");
+        c.setRequestProperty("User-Agent","MikaelLauncherV3/1.0 (Android)");
+        int code=c.getResponseCode(); InputStream in=code>=400?c.getErrorStream():c.getInputStream();
+        java.io.ByteArrayOutputStream o=new java.io.ByteArrayOutputStream(); byte[] b=new byte[8192]; int n;
+        while((n=in.read(b))!=-1)o.write(b,0,n);
+        if(code>=400)throw new Exception("HTTP "+code);
+        return new JSONObject(o.toString("UTF-8"));
     }
 
     private JSONObject getJson(String u)throws Exception{
@@ -1133,6 +909,9 @@ public class MikaelModLibraryFragment extends Fragment {
 }
 EOF
 
+
+fi
+if [ ! -f "$RES/layout/fragment_mikael_mod_library.xml" ]; then
 cat > "$RES/layout/fragment_mikael_mod_library.xml" <<'EOF'
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="16dp" android:background="#0C0E12">
@@ -1148,33 +927,9 @@ cat > "$RES/layout/fragment_mikael_mod_library.xml" <<'EOF'
 </LinearLayout>
 EOF
 
-python3 - <<'PY'
-from pathlib import Path
-p=Path("app_pojavlauncher/src/main/res/layout/fragment_launcher.xml")
-s=p.read_text()
-if "mod_library_button" not in s:
-    marker='<com.kdt.mcgui.LauncherMenuButton android:id="@+id/install_jar_button"'
-    pos=s.find(marker)
-    end=s.find('/>',pos)
-    if pos>=0 and end>=0:
-        button='<com.kdt.mcgui.LauncherMenuButton android:id="@+id/mod_library_button" style="@style/LauncherMenuButton.Universal" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="BIBLIOTECA DE MODS" android:background="@drawable/mikael_button"/>'
-        s=s[:end+2]+"\n"+button+s[end+2:]
-    p.write_text(s)
-PY
 
-python3 - <<'PY'
-from pathlib import Path
-p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java")
-s=p.read_text()
-if "mod_library_button" not in s:
-    s=s.replace('Button mInstallJarButton = view.findViewById(R.id.install_jar_button);','Button mInstallJarButton = view.findViewById(R.id.install_jar_button);' + chr(10) + '        Button mModLibraryButton = view.findViewById(R.id.mod_library_button);')
-    s=s.replace('mCustomControlButton.setOnClickListener(v -> startActivity(new Intent(requireContext(), CustomControlsActivity.class));','mCustomControlButton.setOnClickListener(v -> startActivity(new Intent(requireContext(), CustomControlsActivity.class)));' + chr(10) + '        mModLibraryButton.setOnClickListener(v -> Tools.swapFragment(requireActivity(), MikaelModLibraryFragment.class, MikaelModLibraryFragment.TAG, null));')
-    p.write_text(s)
-PY
-
-
-
-# Unified Mikael content library: mods, resource packs, shaders and worlds.
+fi
+if [ ! -f "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelContentLibraryFragment.java" ]; then
 cat > "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelContentLibraryFragment.java" <<'EOF'
 package net.kdt.pojavlaunch.fragments;
 import android.os.*; import android.view.*; import android.widget.*; import androidx.annotation.*; import androidx.appcompat.app.AlertDialog; import androidx.fragment.app.Fragment;
@@ -1205,6 +960,9 @@ public class MikaelContentLibraryFragment extends Fragment {
  static class Item{String modId,name,summary,fileId,file;Item(String a,String b,String c,String d,String e){modId=a;name=b;summary=c;fileId=d;file=e;}}
 }
 EOF
+
+fi
+if [ ! -f "$RES/layout/fragment_mikael_content_library.xml" ]; then
 cat > "$RES/layout/fragment_mikael_content_library.xml" <<'EOF'
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="16dp" android:background="#0C0E12">
@@ -1220,240 +978,35 @@ cat > "$RES/layout/fragment_mikael_content_library.xml" <<'EOF'
 <Button android:id="@+id/content_back" android:layout_width="match_parent" android:layout_height="52dp" android:text="VOLTAR" android:background="@drawable/mikael_button"/>
 </LinearLayout>
 EOF
-python3 - <<'PY'
-from pathlib import Path
-p=Path("app_pojavlauncher/src/main/res/layout/fragment_launcher.xml"); s=p.read_text()
-if "content_library_button" not in s:
- marker='<com.kdt.mcgui.LauncherMenuButton android:id="@+id/mod_library_button"'; pos=s.find(marker); end=s.find('/>',pos)
- if pos>=0 and end>=0:
-  b='<com.kdt.mcgui.LauncherMenuButton android:id="@+id/content_library_button" style="@style/LauncherMenuButton.Universal" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="TEXTURAS • SHADERS • MUNDOS" android:background="@drawable/mikael_button"/>'
-  s=s[:end+2]+"\n"+b+s[end+2:]
- p.write_text(s)
-PY
-python3 - <<'PY'
-from pathlib import Path
-p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java"); s=p.read_text()
-if "content_library_button" not in s:
- s=s.replace('Button mInstallJarButton = view.findViewById(R.id.install_jar_button);','Button mInstallJarButton = view.findViewById(R.id.install_jar_button);' + chr(10) + '        Button mContentLibraryButton = view.findViewById(R.id.content_library_button);')
- s=s.replace('mCustomControlButton.setOnClickListener(v -> startActivity(new Intent(requireContext(), CustomControlsActivity.class));','mCustomControlButton.setOnClickListener(v -> startActivity(new Intent(requireContext(), CustomControlsActivity.class)));' + chr(10) + '        mContentLibraryButton.setOnClickListener(v -> Tools.swapFragment(requireActivity(), MikaelContentLibraryFragment.class, MikaelContentLibraryFragment.TAG, null));')
- p.write_text(s)
-PY
 
-# Automatically match CurseForge content to the currently selected Minecraft version.
-python3 - <<'PY'
-from pathlib import Path
-p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelContentLibraryFragment.java")
-s=p.read_text()
-# Add reflection import.
-if "java.lang.reflect.Field" not in s:
-    s=s.replace("import java.util.*;", "import java.util.*; import java.lang.reflect.Field; import java.lang.reflect.Method;")
-# Make the search URL include the detected Minecraft version when available.
-old='String classId=t==0?"6":t==1?"12":t==2?"6552":"17"; String u="https://api.curseforge.com/v1/mods/search?gameId=432&classId="+classId+"&pageSize=30"; if(!q.isEmpty())u+="&searchFilter="+URLEncoder.encode(q,"UTF-8");'
-new='String classId=t==0?"6":t==1?"12":t==2?"6552":"17"; String mcVersion=detectMinecraftVersion(); String u="https://api.curseforge.com/v1/mods/search?gameId=432&classId="+classId+"&pageSize=30"; if(mcVersion!=null&&!mcVersion.isEmpty())u+="&gameVersion="+URLEncoder.encode(mcVersion,"UTF-8"); if(!q.isEmpty())u+="&searchFilter="+URLEncoder.encode(q,"UTF-8");'
-if old in s:
-    s=s.replace(old,new)
-# Show which version is being used.
-s=s.replace('status.setText("Pesquisando...");', 'String selectedVersion=detectMinecraftVersion(); status.setText(selectedVersion==null?"Pesquisando...":"Pesquisando para Minecraft "+selectedVersion+"...");', 1)
-# Insert robust version detector before json().
-marker=' JSONObject json(String u)throws Exception{'
-if "String detectMinecraftVersion()" not in s:
-    method=''' String detectMinecraftVersion(){
-  try{
-   String cur=LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE,null);
-   if(cur==null||cur.trim().isEmpty()) return null;
-   LauncherProfiles.load(); MinecraftProfile p=LauncherProfiles.mainProfileJson.profiles.get(cur);
-   if(p==null) return null;
-   String[] names={"lastVersionId","versionId","version","versionName","gameVersion"};
-   for(String n:names){
-    try{ Field f=p.getClass().getDeclaredField(n); f.setAccessible(true); Object v=f.get(p); if(v!=null&&v.toString().matches("[0-9]+[.][0-9]+([.][0-9]+)?([.-].*)?")) return v.toString(); }catch(Exception ignored){}
-    try{ String m="get"+Character.toUpperCase(n.charAt(0))+n.substring(1); Method mm=p.getClass().getMethod(m); Object v=mm.invoke(p); if(v!=null&&v.toString().matches("[0-9]+[.][0-9]+([.][0-9]+)?([.-].*)?")) return v.toString(); }catch(Exception ignored){}
-   }
-  }catch(Exception ignored){}
-  return null;
- }
-'''
-    s=s.replace(marker,method+marker)
-p.write_text(s)
-PY
+fi
 
-
-
-# FINAL BUTTON AUDIT: ensure every button present in the final Mikael home layout
-# has a real listener. This runs after all earlier MainMenu rewrites so later
-# patches cannot accidentally remove the handlers.
-python3 - <<'PY'
-from pathlib import Path
-p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java")
-s=p.read_text()
-needle='ImageButton profile=v.findViewById(R.id.edit_profile_button); mVersionSpinner=v.findViewById(R.id.mc_version_spinner);'
-decl=needle+'\n   Button modLibrary=v.findViewById(R.id.mod_library_button),contentLibrary=v.findViewById(R.id.content_library_button),forgeOptiFine=v.findViewById(R.id.forge_optifine_button);'
-if 'Button modLibrary=v.findViewById(R.id.mod_library_button)' not in s:
-    if needle not in s: raise SystemExit('MainMenu profile declaration not found')
-    s=s.replace(needle,decl,1)
-s=s.replace('files.setOnClickListener(x->{if(!hasOnlineProfile()){hasNoOnlineProfileDialog(requireActivity());return;}openPath(requireContext(),getCurrentProfileDirectory(),false);});', 'files.setOnClickListener(x->openPath(requireContext(),getCurrentProfileDirectory(),false));')
-s=s.replace('if(hasOnlineProfile()){install.setOnClickListener(x->runInstaller(false));install.setOnLongClickListener(x->{runInstaller(true);return true;});}else install.setOnClickListener(x->hasNoOnlineProfileDialog(requireActivity()));', 'install.setOnClickListener(x->runInstaller(false));\n   install.setOnLongClickListener(x->{runInstaller(true);return true;});')
-anchor='discord.setOnClickListener(x->openURL(requireActivity(),getString(R.string.discord_invite)));'
-handlers=anchor+'\n   if(modLibrary!=null) modLibrary.setOnClickListener(x->swapFragment(requireActivity(),MikaelModLibraryFragment.class,MikaelModLibraryFragment.TAG,null));\n   if(contentLibrary!=null) contentLibrary.setOnClickListener(x->swapFragment(requireActivity(),MikaelContentLibraryFragment.class,MikaelContentLibraryFragment.TAG,null));\n   if(forgeOptiFine!=null) forgeOptiFine.setOnClickListener(x->swapFragment(requireActivity(),MikaelForgeOptiFineFragment.class,MikaelForgeOptiFineFragment.TAG,null));'
-if 'modLibrary.setOnClickListener' not in s:
-    if anchor not in s: raise SystemExit('MainMenu listener anchor not found')
-    s=s.replace(anchor,handlers,1)
-p.write_text(s)
-PY
-
-# FINAL FIX: account selection screen.
-# Local/offline accounts work without Microsoft; Mod Library and Forge + OptiFine
-# are available directly from "Adicionar conta".
-python3 - <<'PY'
-from pathlib import Path
-root=Path("app_pojavlauncher/src/main")
-java=root/"java/net/kdt/pojavlaunch/fragments"
-res=root/"res"
-
-(java/"SelectAuthFragment.java").write_text(r'''package net.kdt.pojavlaunch.fragments;
-
-import android.os.Bundle;
-import android.view.View;
-import android.widget.Button;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-import net.kdt.pojavlaunch.R;
-import net.kdt.pojavlaunch.Tools;
-
-public class SelectAuthFragment extends Fragment {
-    public static final String TAG = "AUTH_SELECT_FRAGMENT";
-
-    public SelectAuthFragment() {
-        super(R.layout.fragment_select_auth_method);
-    }
-
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        Button microsoft = view.findViewById(R.id.button_microsoft_authentication);
-        Button local = view.findViewById(R.id.button_local_authentication);
-        Button ely = view.findViewById(R.id.button_ely_authentication);
-        Button mods = view.findViewById(R.id.button_mikael_mod_library);
-        Button forge = view.findViewById(R.id.button_mikael_forge_optifine);
-
-        if (microsoft != null)
-            microsoft.setOnClickListener(v -> Tools.swapFragment(requireActivity(), MicrosoftLoginFragment.class, MicrosoftLoginFragment.TAG, null));
-
-        // Offline/local profile: no Microsoft account is required.
-        if (local != null)
-            local.setOnClickListener(v -> Tools.swapFragment(requireActivity(), LocalLoginFragment.class, LocalLoginFragment.TAG, null));
-
-        if (ely != null)
-            ely.setOnClickListener(v -> Tools.swapFragment(requireActivity(), ElyLoginFragment.class, ElyLoginFragment.TAG, null));
-
-        if (mods != null)
-            mods.setOnClickListener(v -> Tools.swapFragment(requireActivity(), MikaelModLibraryFragment.class, MikaelModLibraryFragment.TAG, null));
-
-        if (forge != null)
-            forge.setOnClickListener(v -> Tools.swapFragment(requireActivity(), MikaelForgeOptiFineFragment.class, MikaelForgeOptiFineFragment.TAG, null));
-    }
-}
-''')
-
-p=java/"LocalLoginFragment.java"
-x=p.read_text()
-x=x.replace('import static net.kdt.pojavlaunch.Tools.hasOnlineProfile;\n\n','')
-x=x.replace('''        // This is overkill but meh
-        if (!hasOnlineProfile()){
-            Tools.swapFragment(requireActivity(), MainMenuFragment.class, MainMenuFragment.TAG, null);
-        }
-''','')
-p.write_text(x)
-
-(res/"layout/fragment_select_auth_method.xml").write_text(r'''<?xml version="1.0" encoding="utf-8"?>
+# Crash resolver screen.
+cat > "$RES/layout/fragment_mikael_crash_resolver.xml" <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#0C0E12"
-    android:fillViewport="true">
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingStart="22dp"
-        android:paddingEnd="22dp"
-        android:paddingTop="26dp"
-        android:paddingBottom="28dp">
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="ADICIONAR CONTA"
-            android:textColor="#FFFFFF"
-            android:textSize="26sp"
-            android:textStyle="bold"/>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="Escolha uma conta ou abra uma ferramenta do Mikael Launcher."
-            android:textColor="#8F9AAA"
-            android:textSize="14sp"/>
-
-        <Button
-            android:id="@+id/button_microsoft_authentication"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginTop="24dp"
-            android:text="MICROSOFT ACCOUNT"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:background="@drawable/mikael_button"/>
-
-        <Button
-            android:id="@+id/button_local_authentication"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginTop="10dp"
-            android:text="CONTA LOCAL / OFFLINE"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:background="@drawable/mikael_button"/>
-
-        <Button
-            android:id="@+id/button_ely_authentication"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginTop="10dp"
-            android:text="ELY.BY"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:background="@drawable/mikael_button"/>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="30dp"
-            android:text="FERRAMENTAS"
-            android:textColor="#4ADE80"
-            android:textSize="14sp"
-            android:textStyle="bold"/>
-
-        <Button
-            android:id="@+id/button_mikael_mod_library"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginTop="10dp"
-            android:text="BIBLIOTECA DE MODS"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:background="@drawable/mikael_button"/>
-
-        <Button
-            android:id="@+id/button_mikael_forge_optifine"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginTop="10dp"
-            android:text="FORGE + OPTIFINE"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:background="@drawable/mikael_button"/>
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="#0C0E12" android:fillViewport="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="18dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="RESOLVER AUTOMÁTICO" android:textColor="#FFFFFF"
+            android:textSize="24sp" android:textStyle="bold"/>
+        <TextView android:id="@+id/resolve_status" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="10dp"
+            android:textColor="#4ADE80" android:textStyle="bold"/>
+        <TextView android:id="@+id/resolve_result" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="12dp"
+            android:textColor="#D7DEE8" android:textSize="14sp"/>
+        <Button android:id="@+id/resolve_button" android:layout_width="match_parent"
+            android:layout_height="52dp" android:layout_marginTop="18dp"
+            android:text="ANALISAR E REPARAR" android:background="@drawable/mikael_button"/>
+        <Button android:id="@+id/resolve_undo" android:layout_width="match_parent"
+            android:layout_height="52dp" android:layout_marginTop="8dp"
+            android:text="DESFAZER ÚLTIMO REPARO" android:background="@drawable/mikael_button"/>
+        <Button android:id="@+id/resolve_back" android:layout_width="match_parent"
+            android:layout_height="52dp" android:layout_marginTop="8dp"
+            android:text="VOLTAR" android:background="@drawable/mikael_button"/>
     </LinearLayout>
 </ScrollView>
-''')
-PY
+EOF
