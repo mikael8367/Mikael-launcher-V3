@@ -26,6 +26,12 @@ jobs:
           chmod +x "$GITHUB_WORKSPACE/patches/mikael_gui.sh"
           "$GITHUB_WORKSPACE/patches/mikael_gui.sh"
 
+      - name: Apply Mikael UI hotfix
+        working-directory: launcher
+        run: |
+          chmod +x "$GITHUB_WORKSPACE/patches/mikael_hotfix_ui.sh"
+          "$GITHUB_WORKSPACE/patches/mikael_hotfix_ui.sh"
+
       - name: Build APK
         working-directory: launcher
         env:
