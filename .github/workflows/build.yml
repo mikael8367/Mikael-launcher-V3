@@ -30,7 +30,7 @@ jobs:
           chmod +x gradlew
           ./gradlew :app_pojavlauncher:assembleDebug --no-daemon --stacktrace
       - name: Verify APK
-        run: test -n "$(find app_pojavlauncher/build/outputs/apk/debug -name '*.apk' -print -quit)"
+        run: test -n "$(find launcher/app_pojavlauncher/build/outputs/apk/debug -name '*.apk' -print -quit)"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
