@@ -4151,3 +4151,38 @@ public class MikaelCrashResolverFragment extends Fragment {
  private void copy(File a,File b)throws Exception{FileInputStream i=new FileInputStream(a);FileOutputStream o=new FileOutputStream(b);byte[] x=new byte[8192];int n;while((n=i.read(x))!=-1)o.write(x,0,n);i.close();o.close();}
 }
 EOF
+
+
+# FINAL NULL-SAFETY PASS: the News/Community views are intentionally removed from
+# fragment_launcher.xml, so never bind listeners to those optional IDs. Also guard
+# every optional Mikael button so a layout variant cannot crash MainMenuFragment.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java")
+s=p.read_text()
+# Remove stale News/Community declarations left by earlier generated MainMenu versions.
+s=s.replace('Button controls=v.findViewById(R.id.custom_control_button),settings=v.findViewById(R.id.settings_button),files=v.findViewById(R.id.open_files_button),logs=v.findViewById(R.id.share_logs_button),news=v.findViewById(R.id.news_button),discord=v.findViewById(R.id.discord_button),install=v.findViewById(R.id.install_jar_button),play=v.findViewById(R.id.play_button);',
+            'Button controls=v.findViewById(R.id.custom_control_button),settings=v.findViewById(R.id.settings_button),files=v.findViewById(R.id.open_files_button),logs=v.findViewById(R.id.share_logs_button),install=v.findViewById(R.id.install_jar_button),play=v.findViewById(R.id.play_button);')
+# Remove any remaining direct bindings to deleted News/Community IDs.
+for old in [
+    'news.setOnClickListener(x->openURL(requireActivity(),URL_HOME));',
+    'discord.setOnClickListener(x->openURL(requireActivity(),getString(R.string.discord_invite)));',
+    'if(news!=null) news.setOnClickListener(x->{});',
+    'if(discord!=null) discord.setOnClickListener(x->{});',
+    'news.setOnClickListener(x->{});',
+    'discord.setOnClickListener(x->{});'
+]: s=s.replace(old,'')
+# Guard required UI bindings as well; this prevents a stale/variant layout from crashing.
+repls={
+'controls.setOnClickListener(x->startActivity(new Intent(requireContext(),CustomControlsActivity.class)));':'if(controls!=null) controls.setOnClickListener(x->startActivity(new Intent(requireContext(),CustomControlsActivity.class)));',
+'settings.setOnClickListener(x->swapFragment(requireActivity(),LauncherPreferenceFragment.class,LauncherActivity.SETTING_FRAGMENT_TAG,null));':'if(settings!=null) settings.setOnClickListener(x->swapFragment(requireActivity(),LauncherPreferenceFragment.class,LauncherActivity.SETTING_FRAGMENT_TAG,null));',
+'logs.setOnClickListener(x->shareLog(requireContext()));':'if(logs!=null) logs.setOnClickListener(x->shareLog(requireContext()));',
+'files.setOnClickListener(x->openPath(requireContext(),getCurrentProfileDirectory(),false));':'if(files!=null) files.setOnClickListener(x->openPath(requireContext(),getCurrentProfileDirectory(),false));',
+'install.setOnClickListener(x->runInstaller(false));':'if(install!=null) install.setOnClickListener(x->runInstaller(false));',
+'install.setOnLongClickListener(x->{runInstaller(true);return true;});':'if(install!=null) install.setOnLongClickListener(x->{runInstaller(true);return true;});',
+'profile.setOnClickListener(x->mVersionSpinner.openProfileEditor(requireActivity()));':'if(profile!=null && mVersionSpinner!=null) profile.setOnClickListener(x->mVersionSpinner.openProfileEditor(requireActivity()));',
+'play.setOnClickListener(x->{':'if(play!=null) play.setOnClickListener(x->{'
+}
+for a,b in repls.items(): s=s.replace(a,b)
+p.write_text(s)
+PY
