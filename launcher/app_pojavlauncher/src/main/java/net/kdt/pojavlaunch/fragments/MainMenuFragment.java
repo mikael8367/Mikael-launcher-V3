@@ -31,17 +31,16 @@ public class MainMenuFragment extends Fragment {
  private mcVersionSpinner mVersionSpinner;
  public MainMenuFragment(){super(R.layout.fragment_launcher);}
  @Override public void onViewCreated(@NonNull View v,@Nullable Bundle b){
-  Button controls=v.findViewById(R.id.custom_control_button),settings=v.findViewById(R.id.settings_button),files=v.findViewById(R.id.open_files_button),logs=v.findViewById(R.id.share_logs_button),news=v.findViewById(R.id.news_button),discord=v.findViewById(R.id.discord_button),install=v.findViewById(R.id.install_jar_button),play=v.findViewById(R.id.play_button);
+  Button controls=v.findViewById(R.id.custom_control_button),settings=v.findViewById(R.id.settings_button),files=v.findViewById(R.id.open_files_button),logs=v.findViewById(R.id.share_logs_button),install=v.findViewById(R.id.install_jar_button),play=v.findViewById(R.id.play_button);
   ImageButton profile=v.findViewById(R.id.edit_profile_button); mVersionSpinner=v.findViewById(R.id.mc_version_spinner);
   applyMikaelTheme(v);
   setupMikaelVideo(v);
   controls.setOnClickListener(x->startActivity(new Intent(requireContext(),CustomControlsActivity.class)));
   settings.setOnClickListener(x->swapFragment(requireActivity(),LauncherPreferenceFragment.class,LauncherActivity.SETTING_FRAGMENT_TAG,null));
-  news.setOnClickListener(x->openURL(requireActivity(),URL_HOME));
-  discord.setOnClickListener(x->openURL(requireActivity(),getString(R.string.discord_invite)));
   logs.setOnClickListener(x->shareLog(requireContext()));
-  files.setOnClickListener(x->{if(!hasOnlineProfile()){hasNoOnlineProfileDialog(requireActivity());return;}openPath(requireContext(),getCurrentProfileDirectory(),false);});
-  if(hasOnlineProfile()){install.setOnClickListener(x->runInstaller(false));install.setOnLongClickListener(x->{runInstaller(true);return true;});}else install.setOnClickListener(x->hasNoOnlineProfileDialog(requireActivity()));
+  files.setOnClickListener(x->openPath(requireContext(),getCurrentProfileDirectory(),false));
+  install.setOnClickListener(x->runInstaller(false));
+  install.setOnLongClickListener(x->{runInstaller(true);return true;});
   profile.setOnClickListener(x->mVersionSpinner.openProfileEditor(requireActivity()));
   play.setOnClickListener(x->{if(hasMods("sodium")&&!LauncherPreferences.DEFAULT_PREF.getBoolean("sodium_override",false)){new AlertDialog.Builder(requireContext()).setTitle(R.string.sodium_warning_title).setMessage(R.string.sodium_warning_message).setNeutralButton(R.string.delete_sodium,(d,w)->{deleteSodiumMods();ExtraCore.setValue(ExtraConstants.LAUNCH_GAME,true);}).show();}else ExtraCore.setValue(ExtraConstants.LAUNCH_GAME,true);});
  }
@@ -49,7 +48,7 @@ public class MainMenuFragment extends Fragment {
   String hex=LauncherPreferences.DEFAULT_PREF.getString("mikael_accent_color","#4ADE80");
   int color;
   try{color=Color.parseColor(hex);}catch(Exception e){color=Color.rgb(74,222,128);}
-  int[] ids={R.id.custom_control_button,R.id.settings_button,R.id.open_files_button,R.id.share_logs_button,R.id.news_button,R.id.discord_button,R.id.install_jar_button};
+  int[] ids={R.id.custom_control_button,R.id.settings_button,R.id.open_files_button,R.id.share_logs_button,R.id.install_jar_button};
   for(int id:ids){View x=v.findViewById(id); if(x!=null) x.setBackgroundTintList(ColorStateList.valueOf(color));}
   View play=v.findViewById(R.id.play_button); if(play!=null) play.setBackgroundTintList(ColorStateList.valueOf(color));
  }
