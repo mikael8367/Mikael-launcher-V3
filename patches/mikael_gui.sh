@@ -802,7 +802,7 @@ public class MikaelModLibraryFragment extends Fragment {
                     data=getJson(u).optJSONArray("data");
                 } catch(Exception curseError) {
                     // CurseForge requires a valid x-api-key. Fall back to the public Modrinth API.
-                    String mr="https://api.modrinth.com/v2/search?limit=20&facets="+URLEncoder.encode("[[\\"project_type:mod\\"]]", "UTF-8");
+                    String mr="https://api.modrinth.com/v2/search?limit=20&facets="+URLEncoder.encode("[[\"project_type:mod\"]]", "UTF-8");
                     if(!q.isEmpty()) mr+="&query="+URLEncoder.encode(q,"UTF-8");
                     data=new JSONArray();
                     JSONArray hits=getJsonPublic(mr).optJSONArray("hits");
