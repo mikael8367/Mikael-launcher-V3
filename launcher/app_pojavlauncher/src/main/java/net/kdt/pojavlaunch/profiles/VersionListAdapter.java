@@ -33,7 +33,9 @@ public class VersionListAdapter extends BaseExpandableListAdapter implements Exp
 
         // Mikael Launcher shows only stable numbered Minecraft releases.
         // This excludes snapshots, pre-releases and April Fools/experimental IDs.
-        List<JMinecraftVersionList.Version> releaseList = new FilteredSubList<>(versionList, item -> item != null && "release".equals(item.type) && item.id != null && item.id.matches("[0-9]+[.][0-9]+([.][0-9]+)?"));
+        List<JMinecraftVersionList.Version> releaseList = new FilteredSubList<>(versionList,
+                item -> item != null && "release".equals(item.type)
+                        && item.id != null && item.id.matches("\d+\.\d+(\.\d+)?"));
 
         // Query installed versions
         mInstalledVersions = new File(Tools.DIR_GAME_NEW + "/versions").list();

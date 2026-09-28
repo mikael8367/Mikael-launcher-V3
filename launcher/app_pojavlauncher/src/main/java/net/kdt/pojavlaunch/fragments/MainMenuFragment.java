@@ -31,28 +31,19 @@ public class MainMenuFragment extends Fragment {
  private mcVersionSpinner mVersionSpinner;
  public MainMenuFragment(){super(R.layout.fragment_launcher);}
  @Override public void onViewCreated(@NonNull View v,@Nullable Bundle b){
-  Button controls=v.findViewById(R.id.custom_control_button),settings=v.findViewById(R.id.settings_button),files=v.findViewById(R.id.open_files_button),logs=v.findViewById(R.id.share_logs_button),install=v.findViewById(R.id.install_jar_button),play=v.findViewById(R.id.play_button);
+  Button controls=v.findViewById(R.id.custom_control_button),settings=v.findViewById(R.id.settings_button),files=v.findViewById(R.id.open_files_button),logs=v.findViewById(R.id.share_logs_button),news=v.findViewById(R.id.news_button),discord=v.findViewById(R.id.discord_button),install=v.findViewById(R.id.install_jar_button),play=v.findViewById(R.id.play_button);
   ImageButton profile=v.findViewById(R.id.edit_profile_button); mVersionSpinner=v.findViewById(R.id.mc_version_spinner);
-   Button modLibrary=v.findViewById(R.id.mod_library_button),contentLibrary=v.findViewById(R.id.content_library_button),forgeOptiFine=v.findViewById(R.id.forge_optifine_button);
-   Button crashChecker=v.findViewById(R.id.crash_checker_button);
-   Button crashResolver=v.findViewById(R.id.crash_resolver_button);
   applyMikaelTheme(v);
   setupMikaelVideo(v);
-  if(controls!=null) controls.setOnClickListener(x->startActivity(new Intent(requireContext(),CustomControlsActivity.class)));
-  if(settings!=null) settings.setOnClickListener(x->swapFragment(requireActivity(),LauncherPreferenceFragment.class,LauncherActivity.SETTING_FRAGMENT_TAG,null));
-  
-  
-   if(modLibrary!=null) modLibrary.setOnClickListener(x->swapFragment(requireActivity(),MikaelModLibraryFragment.class,MikaelModLibraryFragment.TAG,null));
-   if(contentLibrary!=null) contentLibrary.setOnClickListener(x->swapFragment(requireActivity(),MikaelContentLibraryFragment.class,MikaelContentLibraryFragment.TAG,null));
-   if(forgeOptiFine!=null) forgeOptiFine.setOnClickListener(x->swapFragment(requireActivity(),MikaelForgeOptiFineFragment.class,MikaelForgeOptiFineFragment.TAG,null));
-   if(crashChecker!=null) crashChecker.setOnClickListener(x->swapFragment(requireActivity(),MikaelCrashCheckerFragment.class,MikaelCrashCheckerFragment.TAG,null));
-   if(crashResolver!=null) crashResolver.setOnClickListener(x->swapFragment(requireActivity(),MikaelCrashResolverFragment.class,MikaelCrashResolverFragment.TAG,null));
-  if(logs!=null) logs.setOnClickListener(x->shareLog(requireContext()));
-  if(files!=null) files.setOnClickListener(x->openPath(requireContext(),getCurrentProfileDirectory(),false));
-  if(install!=null) install.setOnClickListener(x->runInstaller(false));
-   if(install!=null) install.setOnLongClickListener(x->{runInstaller(true);return true;});
-  if(profile!=null && mVersionSpinner!=null) profile.setOnClickListener(x->mVersionSpinner.openProfileEditor(requireActivity()));
-  if(play!=null) play.setOnClickListener(x->{if(hasMods("sodium")&&!LauncherPreferences.DEFAULT_PREF.getBoolean("sodium_override",false)){new AlertDialog.Builder(requireContext()).setTitle(R.string.sodium_warning_title).setMessage(R.string.sodium_warning_message).setNeutralButton(R.string.delete_sodium,(d,w)->{deleteSodiumMods();ExtraCore.setValue(ExtraConstants.LAUNCH_GAME,true);}).show();}else ExtraCore.setValue(ExtraConstants.LAUNCH_GAME,true);});
+  controls.setOnClickListener(x->startActivity(new Intent(requireContext(),CustomControlsActivity.class)));
+  settings.setOnClickListener(x->swapFragment(requireActivity(),LauncherPreferenceFragment.class,LauncherActivity.SETTING_FRAGMENT_TAG,null));
+  news.setOnClickListener(x->openURL(requireActivity(),URL_HOME));
+  discord.setOnClickListener(x->openURL(requireActivity(),getString(R.string.discord_invite)));
+  logs.setOnClickListener(x->shareLog(requireContext()));
+  files.setOnClickListener(x->{if(!hasOnlineProfile()){hasNoOnlineProfileDialog(requireActivity());return;}openPath(requireContext(),getCurrentProfileDirectory(),false);});
+  if(hasOnlineProfile()){install.setOnClickListener(x->runInstaller(false));install.setOnLongClickListener(x->{runInstaller(true);return true;});}else install.setOnClickListener(x->hasNoOnlineProfileDialog(requireActivity()));
+  profile.setOnClickListener(x->mVersionSpinner.openProfileEditor(requireActivity()));
+  play.setOnClickListener(x->{if(hasMods("sodium")&&!LauncherPreferences.DEFAULT_PREF.getBoolean("sodium_override",false)){new AlertDialog.Builder(requireContext()).setTitle(R.string.sodium_warning_title).setMessage(R.string.sodium_warning_message).setNeutralButton(R.string.delete_sodium,(d,w)->{deleteSodiumMods();ExtraCore.setValue(ExtraConstants.LAUNCH_GAME,true);}).show();}else ExtraCore.setValue(ExtraConstants.LAUNCH_GAME,true);});
  }
  private void applyMikaelTheme(View v){
   String hex=LauncherPreferences.DEFAULT_PREF.getString("mikael_accent_color","#4ADE80");

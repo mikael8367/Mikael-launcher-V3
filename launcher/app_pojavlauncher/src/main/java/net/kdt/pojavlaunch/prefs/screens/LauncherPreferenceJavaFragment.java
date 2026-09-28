@@ -3,8 +3,6 @@ package net.kdt.pojavlaunch.prefs.screens;
 import static net.kdt.pojavlaunch.Architecture.is32BitsDevice;
 import static net.kdt.pojavlaunch.Tools.getTotalDeviceMemory;
 
-import android.app.ActivityManager;
-import android.content.Context;
 import android.os.Bundle;
 import android.widget.TextView;
 
@@ -24,7 +22,6 @@ import net.kdt.pojavlaunch.prefs.LauncherPreferences;
 public class LauncherPreferenceJavaFragment extends LauncherPreferenceFragment {
     private MultiRTConfigDialog mDialogScreen;
     private SwitchPreference mSwitchAutoJRE;
-    private Preference mMikaelRamPreference;
     private final ActivityResultLauncher<Object> mVmInstallLauncher =
             registerForActivityResult(new OpenDocumentWithExtension("xz"), (data)->{
                 if(data != null) Tools.installRuntimeFromUri(getContext(), data);
@@ -39,32 +36,10 @@ public class LauncherPreferenceJavaFragment extends LauncherPreferenceFragment {
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        updateMikaelRamInfo();
-    }
-
-    private void updateMikaelRamInfo() {
-        if (mMikaelRamPreference == null || getContext() == null) return;
-        ActivityManager am = (ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE);
-        if (am == null) return;
-        ActivityManager.MemoryInfo info = new ActivityManager.MemoryInfo();
-        am.getMemoryInfo(info);
-        long availableMb = info.availMem / (1024L * 1024L);
-        long totalMb = info.totalMem / (1024L * 1024L);
-        long usedMb = Math.max(0L, totalMb - availableMb);
-        mMikaelRamPreference.setSummary("Disponível agora: " + availableMb + " MB\n" +
-                "Em uso pelo sistema: " + usedMb + " MB\n" +
-                "Total: " + totalMb + " MB");
-    }
-
-    @Override
     public void onCreatePreferences(Bundle b, String str) {
         int ramAllocation = LauncherPreferences.PREF_RAM_ALLOCATION;
         // Triggers a write for some reason
         addPreferencesFromResource(R.xml.pref_java);
-
-        mMikaelRamPreference = findPreference("mikael_ram_available");
 
         CustomSeekBarPreference memorySeekbar = requirePreference("allocation",
                 CustomSeekBarPreference.class);
