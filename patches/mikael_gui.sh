@@ -27,9 +27,12 @@ new = '''    private static MathUtils.RankedValue<InternalRuntime> getNearestInt
         // which external runtime to download from the Java settings screen.
         return null;
     }'''
-if old not in x:
-    raise SystemExit("NewJREUtil internal-runtime selector block not found")
-p.write_text(x.replace(old, new))
+if old in x:
+    p.write_text(x.replace(old, new))
+else:
+    # The vendored source may already contain the Mikael implementation.
+    if "Mikael Launcher does not bundle Java runtimes" not in x:
+        raise SystemExit("Unsupported NewJREUtil source: internal-runtime selector not recognized")
 PY
 
 # Make the runtime screen explicit about on-demand downloads.
