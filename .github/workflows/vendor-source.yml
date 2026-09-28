@@ -2,9 +2,6 @@ name: Vendor complete launcher source
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - "patches/mikael_gui.sh"
 
 permissions:
   contents: write
