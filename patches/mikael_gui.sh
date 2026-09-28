@@ -516,12 +516,21 @@ python3 - <<'PY'
 from pathlib import Path
 p=Path("app_pojavlauncher/src/main/res/values/styles.xml")
 s=p.read_text()
-marker='''<style name="MikaelPreferenceTheme" parent="@style/PreferenceThemeOverlay.v14.Material">'''
-if marker in s:
-    before=s.split(marker,1)[0]
-    if "</resources>" in before:
-        s=before+"</resources>\n"
-block="""    <style name="MikaelPreferenceTheme" parent="@style/PreferenceThemeOverlay.v14.Material">
+open_tag="<resources>"
+close_tag="</resources>"
+start=s.find(open_tag)
+end=s.find(close_tag,start)
+if start < 0 or end < 0:
+    raise SystemExit("styles.xml resources root not found")
+body=s[start+len(open_tag):end]
+# Strip all previous Mikael style declarations from the body so the patch is idempotent.
+import re
+body=re.sub(r'\s*<style name="MikaelPreferenceTheme".*?</style>', '', body, flags=re.S)
+body=re.sub(r'\s*<style name="MikaelPreferenceStyle".*?</style>', '', body, flags=re.S)
+body=re.sub(r'\s*<style name="MikaelSwitchPreferenceStyle".*?</style>', '', body, flags=re.S)
+body=re.sub(r'\s*<style name="MikaelSeekBarPreferenceStyle".*?</style>', '', body, flags=re.S)
+block="""
+    <style name="MikaelPreferenceTheme" parent="@style/PreferenceThemeOverlay.v14.Material">
         <item name="preferenceStyle">@style/MikaelPreferenceStyle</item>
         <item name="switchPreferenceStyle">@style/MikaelSwitchPreferenceStyle</item>
         <item name="switchPreferenceCompatStyle">@style/MikaelSwitchPreferenceStyle</item>
@@ -538,8 +547,7 @@ block="""    <style name="MikaelPreferenceTheme" parent="@style/PreferenceThemeO
         <item name="showSeekBarValue">true</item>
     </style>
 """
-if 'name="MikaelPreferenceTheme"' not in s:
-    s=s.replace("</resources>", block+"</resources>")
+s=s[:start]+open_tag+body.rstrip()+"\n"+block+close_tag+s[end+len(close_tag):]
 p.write_text(s)
 PY
 
