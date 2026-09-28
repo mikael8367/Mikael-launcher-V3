@@ -735,3 +735,278 @@ s=s.replace('  install.setOnClickListener(', '  if (install != null) install.set
 s=s.replace('  install.setOnLongClickListener(', '  if (install != null) install.setOnLongClickListener(')
 p.write_text(s)
 PY
+
+
+# Restore the Mikael library source files when using the vendored launcher.
+if [ ! -f "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelModLibraryFragment.java" ]; then
+cat > "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelModLibraryFragment.java" <<'EOF'
+package net.kdt.pojavlaunch.fragments;
+
+import android.os.Bundle;
+import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ListView;
+import android.widget.TextView;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.fragment.app.Fragment;
+import net.kdt.pojavlaunch.R;
+import net.kdt.pojavlaunch.Tools;
+import net.kdt.pojavlaunch.prefs.LauncherPreferences;
+import net.kdt.pojavlaunch.value.launcherprofiles.LauncherProfiles;
+import net.kdt.pojavlaunch.value.launcherprofiles.MinecraftProfile;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.List;
+
+public class MikaelModLibraryFragment extends Fragment {
+    public static final String TAG = "MIKAEL_MOD_LIBRARY";
+    private final List<ModItem> mods = new ArrayList<>();
+    private ArrayAdapter<String> adapter;
+    private TextView status;
+    private EditText search;
+
+    public MikaelModLibraryFragment() { super(R.layout.fragment_mikael_mod_library); }
+
+    @Override public void onViewCreated(@NonNull View v, @Nullable Bundle b) {
+        search=v.findViewById(R.id.mod_search);
+        status=v.findViewById(R.id.mod_status);
+        ListView list=v.findViewById(R.id.mod_list);
+        adapter=new ArrayAdapter<>(requireContext(),android.R.layout.simple_list_item_1,new ArrayList<>());
+        list.setAdapter(adapter);
+        v.findViewById(R.id.mod_search_button).setOnClickListener(x->searchMods());
+        v.findViewById(R.id.mod_back).setOnClickListener(x->Tools.swapFragment(requireActivity(),MainMenuFragment.class,MainMenuFragment.TAG,null));
+        list.setOnItemClickListener((p,x,pos,id)->confirmInstall(mods.get(pos)));
+        searchMods();
+    }
+
+    private void searchMods() {
+        String q=search.getText().toString().trim();
+        status.setText("Pesquisando mods...");
+        new Thread(()->{
+            try {
+                String u="https://api.curseforge.com/v1/mods/search?gameId=432&classId=6&pageSize=20";
+                if(!q.isEmpty()) u+="&searchFilter="+URLEncoder.encode(q,"UTF-8");
+                JSONArray data;
+                try {
+                    data=getJson(u).optJSONArray("data");
+                } catch(Exception curseError) {
+                    // CurseForge requires a valid x-api-key. Fall back to the public Modrinth API.
+                    String mr="https://api.modrinth.com/v2/search?limit=20&facets="+URLEncoder.encode("[[\\"project_type:mod\\"]]", "UTF-8");
+                    if(!q.isEmpty()) mr+="&query="+URLEncoder.encode(q,"UTF-8");
+                    data=new JSONArray();
+                    JSONArray hits=getJsonPublic(mr).optJSONArray("hits");
+                    if(hits!=null) for(int i=0;i<hits.length();i++){
+                        JSONObject h=hits.getJSONObject(i);
+                        String id=h.optString("project_id");
+                        String title=h.optString("title","Mod");
+                        String desc=h.optString("description","");
+                        JSONObject item=new JSONObject();
+                        item.put("id","mr:"+id);
+                        item.put("name",title);
+                        item.put("summary",desc);
+                        item.put("fileId",h.optString("latest_version",""));
+                        item.put("fileName","Modrinth");
+                        data.put(item);
+                    }
+                }
+                List<ModItem> found=new ArrayList<>();
+                for(int i=0;i<data.length();i++){
+                    JSONObject m=data.getJSONObject(i);
+                    if(m.optString("id").startsWith("mr:")){
+                        found.add(new ModItem(m.optString("id"),m.optString("name","Mod"),m.optString("summary",""),m.optString("fileId"),m.optString("fileName","Modrinth")));
+                    } else {
+                        JSONObject f=m.optJSONArray("latestFiles")!=null?m.getJSONArray("latestFiles").optJSONObject(0):null;
+                        if(f!=null) found.add(new ModItem(m.optString("id"),m.optString("name","Mod"),m.optString("summary",""),f.optString("id"),f.optString("displayName",f.optString("fileName","Arquivo"))));
+                    }
+                }
+                android.app.Activity a=getActivity(); if(a==null)return; a.runOnUiThread(()->{
+                    mods.clear(); mods.addAll(found); adapter.clear();
+                    for(ModItem m:mods) adapter.add(m.name+"\n"+m.fileName);
+                    adapter.notifyDataSetChanged(); status.setText(found.size()+" mods encontrados • toque para instalar");
+                });
+            } catch(Exception e){ android.app.Activity a=getActivity(); if(a!=null)a.runOnUiThread(()->status.setText("Erro: "+e.getMessage())); }
+        }).start();
+    }
+
+    private void confirmInstall(ModItem m) {
+        new AlertDialog.Builder(requireContext()).setTitle(m.name)
+            .setMessage(m.summary+"\n\nArquivo: "+m.fileName)
+            .setNegativeButton("CANCELAR",null).setPositiveButton("BAIXAR",(d,w)->downloadMod(m)).show();
+    }
+
+    private void downloadMod(ModItem m) {
+        status.setText("Baixando "+m.name+"...");
+        new Thread(()->{
+            try {
+                String url;
+                if(m.modId.startsWith("mr:")){
+                    JSONObject v=getJsonPublic("https://api.modrinth.com/v2/version/"+URLEncoder.encode(m.fileId,"UTF-8"));
+                    JSONArray fs=v.optJSONArray("files");
+                    url=fs!=null&&fs.length()>0?fs.getJSONObject(0).optString("url",""):"";
+                } else {
+                    url=getJson("https://api.curseforge.com/v1/mods/"+m.modId+"/files/"+m.fileId+"/download-url").optString("data","");
+                }
+                if(url.isEmpty()) throw new Exception("Download indisponível.");
+                File dir=getCurrentProfileDirectory(), modsDir=new File(dir,"mods");
+                if(!modsDir.exists()&&!modsDir.mkdirs()) throw new Exception("Não foi possível criar a pasta mods.");
+                File out=new File(modsDir,m.fileName.replaceAll("[\\\\/:*?\"<>|]","_"));
+                HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection();
+                c.setConnectTimeout(15000); c.setReadTimeout(30000);
+                try(InputStream in=c.getInputStream();FileOutputStream o=new FileOutputStream(out)){
+                    byte[] b=new byte[8192]; int n; while((n=in.read(b))!=-1)o.write(b,0,n);
+                }
+                requireActivity().runOnUiThread(()->status.setText("Instalado em mods/: "+out.getName()));
+            }catch(Exception e){android.app.Activity a=getActivity(); if(a!=null)a.runOnUiThread(()->status.setText("Falha: "+e.getMessage()));}
+        }).start();
+    }
+
+    private JSONObject getJsonPublic(String u)throws Exception{
+        HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();
+        c.setRequestMethod("GET"); c.setConnectTimeout(15000); c.setReadTimeout(20000);
+        c.setRequestProperty("Accept","application/json");
+        c.setRequestProperty("User-Agent","MikaelLauncherV3/1.0 (Android)");
+        int code=c.getResponseCode(); InputStream in=code>=400?c.getErrorStream():c.getInputStream();
+        java.io.ByteArrayOutputStream o=new java.io.ByteArrayOutputStream(); byte[] b=new byte[8192]; int n;
+        while((n=in.read(b))!=-1)o.write(b,0,n);
+        if(code>=400)throw new Exception("HTTP "+code);
+        return new JSONObject(o.toString("UTF-8"));
+    }
+
+    private JSONObject getJson(String u)throws Exception{
+        HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();
+        c.setRequestMethod("GET"); c.setConnectTimeout(15000); c.setReadTimeout(20000);
+        c.setRequestProperty("Accept","application/json");
+        c.setRequestProperty("x-api-key",getString(R.string.curseforge_api_key));
+        int code=c.getResponseCode(); InputStream in=code>=400?c.getErrorStream():c.getInputStream();
+        java.io.ByteArrayOutputStream o=new java.io.ByteArrayOutputStream(); byte[] b=new byte[8192]; int n;
+        while((n=in.read(b))!=-1)o.write(b,0,n);
+        if(code>=400)throw new Exception("HTTP "+code);
+        return new JSONObject(o.toString("UTF-8"));
+    }
+
+    private File getCurrentProfileDirectory(){
+        String cur=LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE,null);
+        if(cur==null||cur.trim().isEmpty())return new File(Tools.DIR_GAME_NEW);
+        LauncherProfiles.load(); MinecraftProfile p=LauncherProfiles.mainProfileJson.profiles.get(cur);
+        return p==null?new File(Tools.DIR_GAME_NEW):Tools.getGameDirPath(p);
+    }
+
+    private static class ModItem{
+        final String modId,name,summary,fileId,fileName;
+        ModItem(String a,String b,String c,String d,String e){modId=a;name=b;summary=c;fileId=d;fileName=e;}
+    }
+}
+EOF
+
+
+fi
+if [ ! -f "$RES/layout/fragment_mikael_mod_library.xml" ]; then
+cat > "$RES/layout/fragment_mikael_mod_library.xml" <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="16dp" android:background="#0C0E12">
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="BIBLIOTECA DE MODS" android:textColor="#FFFFFF" android:textSize="24sp" android:textStyle="bold"/>
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Mods do CurseForge para baixar direto no launcher" android:textColor="#9AA4B2"/>
+<LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="14dp" android:orientation="horizontal">
+<EditText android:id="@+id/mod_search" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:hint="Pesquisar mod..." android:textColor="#FFFFFF" android:singleLine="true"/>
+<Button android:id="@+id/mod_search_button" android:layout_width="90dp" android:layout_height="match_parent" android:text="BUSCAR" android:background="@drawable/mikael_button"/>
+</LinearLayout>
+<TextView android:id="@+id/mod_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="10dp" android:text="Carregando..." android:textColor="#4ADE80"/>
+<ListView android:id="@+id/mod_list" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:divider="#222833" android:dividerHeight="1dp"/>
+<Button android:id="@+id/mod_back" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp" android:text="VOLTAR" android:background="@drawable/mikael_button"/>
+</LinearLayout>
+EOF
+
+
+fi
+if [ ! -f "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelContentLibraryFragment.java" ]; then
+cat > "$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelContentLibraryFragment.java" <<'EOF'
+package net.kdt.pojavlaunch.fragments;
+import android.os.*; import android.view.*; import android.widget.*; import androidx.annotation.*; import androidx.appcompat.app.AlertDialog; import androidx.fragment.app.Fragment;
+import net.kdt.pojavlaunch.*; import net.kdt.pojavlaunch.prefs.LauncherPreferences; import net.kdt.pojavlaunch.value.launcherprofiles.*; import org.json.*; import java.io.*; import java.net.*; import java.util.*;
+public class MikaelContentLibraryFragment extends Fragment {
+ public static final String TAG="MIKAEL_CONTENT_LIBRARY"; Spinner type; EditText search; TextView status; ListView list; ArrayAdapter<String> adapter; List<Item> items=new ArrayList<>();
+ public MikaelContentLibraryFragment(){super(R.layout.fragment_mikael_content_library);}
+ public void onViewCreated(@NonNull View v,@Nullable Bundle b){
+  type=v.findViewById(R.id.content_type); search=v.findViewById(R.id.content_search); status=v.findViewById(R.id.content_status); list=v.findViewById(R.id.content_list); adapter=new ArrayAdapter<>(requireContext(),android.R.layout.simple_list_item_1,new ArrayList<>()); list.setAdapter(adapter);
+  type.setAdapter(new ArrayAdapter<String>(requireContext(),android.R.layout.simple_spinner_dropdown_item,new String[]{"Mods","Texturas / Resource Packs","Shaders","Mundos"}));
+  v.findViewById(R.id.content_search_button).setOnClickListener(x->load()); v.findViewById(R.id.content_back).setOnClickListener(x->Tools.swapFragment(requireActivity(),MainMenuFragment.class,MainMenuFragment.TAG,null)); list.setOnItemClickListener((p,x,pos,id)->confirm(items.get(pos))); load();
+ }
+ void load(){int t=type.getSelectedItemPosition(); String q=search.getText().toString().trim(); status.setText("Pesquisando..."); new Thread(()->{try{
+  String classId=t==0?"6":t==1?"12":t==2?"6552":"17"; String u="https://api.curseforge.com/v1/mods/search?gameId=432&classId="+classId+"&pageSize=30"; if(!q.isEmpty())u+="&searchFilter="+URLEncoder.encode(q,"UTF-8");
+  JSONArray dataArray=json(u).optJSONArray("data"); List<Item> out=new ArrayList<>(); if(dataArray!=null)for(int i=0;i<dataArray.length();i++){JSONObject m=dataArray.getJSONObject(i); JSONArray fs=m.optJSONArray("latestFiles"); JSONObject f=fs!=null&&fs.length()>0?fs.optJSONObject(0):null; if(f!=null)out.add(new Item(m.optString("id"),m.optString("name","Item"),m.optString("summary",""),f.optString("id"),f.optString("displayName",f.optString("fileName","download"))));}
+  android.app.Activity activity=getActivity(); if(activity==null)return; activity.runOnUiThread(()->{if(!isAdded())return;items.clear();items.addAll(out);adapter.clear();for(Item x:items)adapter.add(x.name+"\n"+x.file);adapter.notifyDataSetChanged();status.setText(out.size()+" resultados");});
+ }catch(Exception e){android.app.Activity activity=getActivity(); if(activity!=null)activity.runOnUiThread(()->{if(isAdded())status.setText("Erro: "+e.getMessage());});}}).start();}
+ void confirm(Item x){new AlertDialog.Builder(requireContext()).setTitle(x.name).setMessage(x.summary+"\n\n"+x.file).setNegativeButton("CANCELAR",null).setPositiveButton("BAIXAR",(d,w)->download(x)).show();}
+ void download(Item x){status.setText("Baixando...");new Thread(()->{try{
+  String u=json("https://api.curseforge.com/v1/mods/"+x.modId+"/files/"+x.fileId+"/download-url").optString("data",""); if(u.isEmpty())throw new Exception("Download indisponível.");
+  File base=getDir(); int t=type.getSelectedItemPosition(); String folder=t==0?"mods":t==1?"resourcepacks":t==2?"shaderpacks":"saves"; File dir=new File(base,folder); if(!dir.exists()&&!dir.mkdirs())throw new Exception("Não foi possível criar "+folder);
+  String fn=x.file.replaceAll("[\\\\/:*?\"<>|]","_"); File out=new File(dir,fn); HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setConnectTimeout(15000);c.setReadTimeout(60000);
+  try(InputStream in=c.getInputStream();FileOutputStream o=new FileOutputStream(out)){byte[] b=new byte[8192];int n;while((n=in.read(b))!=-1)o.write(b,0,n);}
+  requireActivity().runOnUiThread(()->status.setText("Instalado em "+folder+"/: "+out.getName()));
+ }catch(Exception e){android.app.Activity a=getActivity(); if(a!=null)a.runOnUiThread(()->status.setText("Falha: "+e.getMessage()));}}).start();}
+ JSONObject json(String u)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setRequestProperty("Accept","application/json");c.setRequestProperty("x-api-key",getString(R.string.curseforge_api_key));int code=c.getResponseCode();InputStream in=code>=400?c.getErrorStream():c.getInputStream();ByteArrayOutputStream o=new ByteArrayOutputStream();byte[] b=new byte[8192];int n;while((n=in.read(b))!=-1)o.write(b,0,n);if(code>=400)throw new Exception("HTTP "+code);return new JSONObject(o.toString("UTF-8"));}
+ File getDir(){String cur=LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE,null);if(cur==null||cur.trim().isEmpty())return new File(Tools.DIR_GAME_NEW);LauncherProfiles.load();MinecraftProfile p=LauncherProfiles.mainProfileJson.profiles.get(cur);return p==null?new File(Tools.DIR_GAME_NEW):Tools.getGameDirPath(p);}
+ static class Item{String modId,name,summary,fileId,file;Item(String a,String b,String c,String d,String e){modId=a;name=b;summary=c;fileId=d;file=e;}}
+}
+EOF
+
+fi
+if [ ! -f "$RES/layout/fragment_mikael_content_library.xml" ]; then
+cat > "$RES/layout/fragment_mikael_content_library.xml" <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="16dp" android:background="#0C0E12">
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="BIBLIOTECA" android:textColor="#FFFFFF" android:textSize="24sp" android:textStyle="bold"/>
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Mods • Texturas • Shaders • Mundos" android:textColor="#9AA4B2"/>
+<Spinner android:id="@+id/content_type" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="12dp"/>
+<LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp">
+<EditText android:id="@+id/content_search" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:hint="Pesquisar..." android:textColor="#FFFFFF" android:singleLine="true"/>
+<Button android:id="@+id/content_search_button" android:layout_width="90dp" android:layout_height="match_parent" android:text="BUSCAR" android:background="@drawable/mikael_button"/>
+</LinearLayout>
+<TextView android:id="@+id/content_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="10dp" android:textColor="#4ADE80"/>
+<ListView android:id="@+id/content_list" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
+<Button android:id="@+id/content_back" android:layout_width="match_parent" android:layout_height="52dp" android:text="VOLTAR" android:background="@drawable/mikael_button"/>
+</LinearLayout>
+EOF
+
+fi
+
+# Crash resolver screen.
+cat > "$RES/layout/fragment_mikael_crash_resolver.xml" <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="#0C0E12" android:fillViewport="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="18dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="RESOLVER AUTOMÁTICO" android:textColor="#FFFFFF"
+            android:textSize="24sp" android:textStyle="bold"/>
+        <TextView android:id="@+id/resolve_status" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="10dp"
+            android:textColor="#4ADE80" android:textStyle="bold"/>
+        <TextView android:id="@+id/resolve_result" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="12dp"
+            android:textColor="#D7DEE8" android:textSize="14sp"/>
+        <Button android:id="@+id/resolve_button" android:layout_width="match_parent"
+            android:layout_height="52dp" android:layout_marginTop="18dp"
+            android:text="ANALISAR E REPARAR" android:background="@drawable/mikael_button"/>
+        <Button android:id="@+id/resolve_undo" android:layout_width="match_parent"
+            android:layout_height="52dp" android:layout_marginTop="8dp"
+            android:text="DESFAZER ÚLTIMO REPARO" android:background="@drawable/mikael_button"/>
+        <Button android:id="@+id/resolve_back" android:layout_width="match_parent"
+            android:layout_height="52dp" android:layout_marginTop="8dp"
+            android:text="VOLTAR" android:background="@drawable/mikael_button"/>
+    </LinearLayout>
+</ScrollView>
+EOF
