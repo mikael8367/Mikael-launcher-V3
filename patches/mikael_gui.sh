@@ -623,3 +623,52 @@ EOF
 cat > "$RES/layout/fragment_mikael_forge_optifine.xml" <<'EOF'
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="22dp" android:background="#0C0E12">
+
+
+# Final Android identity: Mikael Launcher V3.
+# Keep the Java namespace for compatibility, but give the installed app its own
+# package/application ID so it no longer identifies as Amethyst.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/build.gradle")
+s=p.read_text()
+s=s.replace("applicationId \"org.angelauramc.amethyst\"", "applicationId \"com.mikael.launcher\"")
+s=s.replace('resValue "string", "app_name", "Amethyst (Debug)"', 'resValue "string", "app_name", "Mikael Launcher V3"')
+s=s.replace('resValue "string", "app_short_name", "Amethyst (Debug)"', 'resValue "string", "app_short_name", "Mikael Launcher V3"')
+s=s.replace('resValue \'string\', \'application_package\', \'org.angelauramc.amethyst.debug\'', 'resValue \'string\', \'application_package\', \'com.mikael.launcher.debug\'')
+s=s.replace('resValue \'string\', \'storageProviderAuthorities\', \'org.angelauramc.amethyst.scoped.gamefolder.debug\'', 'resValue \'string\', \'storageProviderAuthorities\', \'com.mikael.launcher.scoped.gamefolder.debug\'')
+s=s.replace('resValue \'string\', \'shareProviderAuthority\', \'org.angelauramc.amethyst.scoped.controlfolder.debug\'', 'resValue \'string\', \'shareProviderAuthority\', \'com.mikael.launcher.scoped.controlfolder.debug\'')
+s=s.replace('resValue "string", "app_name", "Amethyst"', 'resValue "string", "app_name", "Mikael Launcher V3"')
+s=s.replace('resValue "string", "app_short_name", "Amethyst"', 'resValue "string", "app_short_name", "Mikael Launcher V3"')
+s=s.replace('resValue \'string\', \'application_package\', \'org.angelauramc.amethyst\'', 'resValue \'string\', \'application_package\', \'com.mikael.launcher\'')
+s=s.replace('resValue \'string\', \'storageProviderAuthorities\', \'org.angelauramc.amethyst.scoped.gamefolder\'', 'resValue \'string\', \'storageProviderAuthorities\', \'com.mikael.launcher.scoped.gamefolder\'')
+s=s.replace('android:process=\":launcher\"', 'android:process=\":launcher\"')
+p.write_text(s)
+PY
+
+# Ensure the generated main menu is always null-safe. Missing optional buttons
+# must never crash the launcher during Fragment creation.
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java")
+s=p.read_text()
+repls={
+'controls.setOnClickListener(': 'if (controls != null) controls.setOnClickListener(',
+'settings.setOnClickListener(': 'if (settings != null) settings.setOnClickListener(',
+'logs.setOnClickListener(': 'if (logs != null) logs.setOnClickListener(',
+'files.setOnClickListener(': 'if (files != null) files.setOnClickListener(',
+'modLibrary.setOnClickListener(': 'if (modLibrary != null) modLibrary.setOnClickListener(',
+'contentLibrary.setOnClickListener(': 'if (contentLibrary != null) contentLibrary.setOnClickListener(',
+'forgeOptiFine.setOnClickListener(': 'if (forgeOptiFine != null) forgeOptiFine.setOnClickListener(',
+'profile.setOnClickListener(': 'if (profile != null && mVersionSpinner != null) profile.setOnClickListener(',
+'play.setOnClickListener(': 'if (play != null) play.setOnClickListener('
+}
+for a,b in repls.items():
+    s=s.replace(b,a) if False else s
+# The current Mikael source is already guarded; normalize the known legacy form.
+for var in ['controls','settings','logs','files','modLibrary','contentLibrary','forgeOptiFine','profile','play']:
+    s=s.replace('  '+var+'.setOnClickListener(', '  if ('+var+' != null) '+var+'.setOnClickListener(')
+s=s.replace('  install.setOnClickListener(', '  if (install != null) install.setOnClickListener(')
+s=s.replace('  install.setOnLongClickListener(', '  if (install != null) install.setOnLongClickListener(')
+p.write_text(s)
+PY
