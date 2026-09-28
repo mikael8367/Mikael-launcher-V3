@@ -547,7 +547,7 @@ block="""
         <item name="showSeekBarValue">true</item>
     </style>
 """
-s=s[:start]+open_tag+body.rstrip()+"\n"+block+close_tag+s[end+len(close_tag):]
+s=s[:start]+open_tag+body.rstrip()+"\n"+block+close_tag+"\n"
 p.write_text(s)
 PY
 
