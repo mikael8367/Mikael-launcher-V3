@@ -66,7 +66,7 @@ public class OptiFineScraper implements DownloadUtils.ParseCallback<OptiFineUtil
                     optiFineVersion.downloadUrl = getLinkHref(subNode);
             }
         }
-        if (optiFineVersion.versionName != null && !optiFineVersion.versionName.toLowerCase(java.util.Locale.ROOT).contains("pre")) mListInProgress.add(optiFineVersion);
+        mListInProgress.add(optiFineVersion);
     }
     private String getLinkHref(TagNode parent) {
         for(TagNode subNode : parent.getChildTags()) {
@@ -83,7 +83,7 @@ public class OptiFineScraper implements DownloadUtils.ParseCallback<OptiFineUtil
             mOptiFineVersions.optifineVersions.add(mListInProgress);
         }
         if(tagNode != null) {
-            mMinecraftVersion = tagNode.getText().toString().replace("Minecraft ", "").trim();
+            mMinecraftVersion = tagNode.getText().toString();
             mListInProgress = new ArrayList<>();
         }
     }
