@@ -512,24 +512,36 @@ cat > "$RES/layout/mikael_seekbar_preference.xml" <<'EOF'
 </LinearLayout>
 EOF
 
-cat >> "$RES/values/styles.xml" <<'EOF'
-<style name="MikaelPreferenceTheme" parent="@style/PreferenceThemeOverlay.v14.Material">
-    <item name="preferenceStyle">@style/MikaelPreferenceStyle</item>
-    <item name="switchPreferenceStyle">@style/MikaelSwitchPreferenceStyle</item>
-    <item name="switchPreferenceCompatStyle">@style/MikaelSwitchPreferenceStyle</item>
-    <item name="seekBarPreferenceStyle">@style/MikaelSeekBarPreferenceStyle</item>
-</style>
-<style name="MikaelPreferenceStyle" parent="@style/Preference.Material">
-    <item name="android:layout">@layout/mikael_preference</item>
-</style>
-<style name="MikaelSwitchPreferenceStyle" parent="@style/Preference.SwitchPreference">
-    <item name="android:layout">@layout/mikael_preference</item>
-</style>
-<style name="MikaelSeekBarPreferenceStyle" parent="@style/Preference.SeekBarPreference">
-    <item name="android:layout">@layout/mikael_seekbar_preference</item>
-    <item name="showSeekBarValue">true</item>
-</style>
-EOF
+python3 - <<'PY'
+from pathlib import Path
+p=Path("app_pojavlauncher/src/main/res/values/styles.xml")
+s=p.read_text()
+marker='''<style name="MikaelPreferenceTheme" parent="@style/PreferenceThemeOverlay.v14.Material">'''
+if marker in s:
+    before=s.split(marker,1)[0]
+    if "</resources>" in before:
+        s=before+"</resources>\n"
+block="""    <style name="MikaelPreferenceTheme" parent="@style/PreferenceThemeOverlay.v14.Material">
+        <item name="preferenceStyle">@style/MikaelPreferenceStyle</item>
+        <item name="switchPreferenceStyle">@style/MikaelSwitchPreferenceStyle</item>
+        <item name="switchPreferenceCompatStyle">@style/MikaelSwitchPreferenceStyle</item>
+        <item name="seekBarPreferenceStyle">@style/MikaelSeekBarPreferenceStyle</item>
+    </style>
+    <style name="MikaelPreferenceStyle" parent="@style/Preference.Material">
+        <item name="android:layout">@layout/mikael_preference</item>
+    </style>
+    <style name="MikaelSwitchPreferenceStyle" parent="@style/Preference.SwitchPreference">
+        <item name="android:layout">@layout/mikael_preference</item>
+    </style>
+    <style name="MikaelSeekBarPreferenceStyle" parent="@style/Preference.SeekBarPreference">
+        <item name="android:layout">@layout/mikael_seekbar_preference</item>
+        <item name="showSeekBarValue">true</item>
+    </style>
+"""
+if 'name="MikaelPreferenceTheme"' not in s:
+    s=s.replace("</resources>", block+"</resources>")
+p.write_text(s)
+PY
 
 python3 - <<'PY'
 from pathlib import Path
