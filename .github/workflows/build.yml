@@ -1,6 +1,9 @@
 name: Build Mikael Launcher APK
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - fix/optifine-and-stable-versions
 permissions:
   contents: write
 jobs:
