@@ -2478,7 +2478,7 @@ public class MikaelCrashCheckerFragment extends Fragment {
 
         // Increase confidence when multiple independent signatures agree.
         Set<String> tokens=new HashSet<>();
-        Matcher m=Pattern.compile("(?i)([a-z0-9_$.]+(?:mod|fabric|forge|optifine|sodium)[a-z0-9_$.\\-]*)").matcher(text);
+        Matcher m=Pattern.compile("(?i)([a-z0-9_$.]+(?:mod|fabric|forge|optifine|sodium)[a-z0-9_$.\\\-]*)").matcher(text);
         while(m.find() && tokens.size()<16) tokens.add(m.group(1));
         for(Finding f:fs) if(f.score>0 && !tokens.isEmpty() && f.id.equals("missing_mod")) f.score++;
         return fs;
