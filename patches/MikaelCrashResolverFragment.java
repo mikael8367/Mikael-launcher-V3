@@ -24,11 +24,12 @@ public class MikaelCrashResolverFragment extends Fragment {
     @Override public void onViewCreated(@NonNull View v,@Nullable Bundle state){
         TextView status=v.findViewById(R.id.resolve_status), result=v.findViewById(R.id.resolve_result);
         Button resolve=v.findViewById(R.id.resolve_button), undo=v.findViewById(R.id.resolve_undo), back=v.findViewById(R.id.resolve_back);
+        if (status == null || result == null) return;
         status.setText("RESOLVER AUTOMÁTICO PRONTO");
         result.setText("Diagnóstico e reparos locais reversíveis.\n\n• RAM em OutOfMemory\n• VSync/superfície em falhas gráficas\n• pastas essenciais\n• temporários de download\n• backup antes de alterações");
-        resolve.setOnClickListener(x->repair(status,result));
-        undo.setOnClickListener(x->undo(status,result));
-        back.setOnClickListener(x->Tools.swapFragment(requireActivity(),MainMenuFragment.class,MainMenuFragment.TAG,null));
+        if (resolve != null) resolve.setOnClickListener(x->repair(status,result));
+        if (undo != null) undo.setOnClickListener(x->undo(status,result));
+        if (back != null) back.setOnClickListener(x->Tools.swapFragment(requireActivity(),MainMenuFragment.class,MainMenuFragment.TAG,null));
     }
     private File gameDir(){
         String p=LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE,null);
