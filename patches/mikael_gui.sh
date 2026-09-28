@@ -642,8 +642,51 @@ public class MikaelForgeOptiFineFragment extends Fragment {
 EOF
 cat > "$RES/layout/fragment_mikael_forge_optifine.xml" <<'EOF'
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="22dp" android:background="#0C0E12">
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="22dp"
+    android:background="#0C0E12">
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="FORGE + OPTIFINE"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
+        android:textSize="22sp"
+        android:gravity="center"
+        android:layout_marginBottom="18dp"/>
+
+    <Button
+        android:id="@+id/mfo_forge"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:text="FORGE"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/mikael_button"/>
+
+    <Button
+        android:id="@+id/mfo_optifine"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="10dp"
+        android:text="OPTIFINE"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/mikael_button"/>
+
+    <Button
+        android:id="@+id/mfo_back"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="18dp"
+        android:text="VOLTAR"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/mikael_button"/>
+
+</LinearLayout>
+EOF
 
 # Final Android identity: Mikael Launcher V3.
 # Keep the Java namespace for compatibility, but give the installed app its own
