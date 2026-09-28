@@ -20,6 +20,8 @@ jobs:
           chmod +x "$GITHUB_WORKSPACE/patches/mikael_gui.sh"
           "$GITHUB_WORKSPACE/patches/mikael_gui.sh"
           cp "$GITHUB_WORKSPACE/patches/MikaelCrashResolverFragment.java" app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/fragments/MikaelCrashResolverFragment.java
+          chmod +x "$GITHUB_WORKSPACE/patches/mainmenu_null_safety.sh"
+          "$GITHUB_WORKSPACE/patches/mainmenu_null_safety.sh"
       - name: Build APK
         working-directory: launcher
         env:
