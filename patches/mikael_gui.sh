@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT=app_pojavlauncher/src/main
 RES=$ROOT/res
 JAVA=$ROOT/java/net/kdt/pojavlaunch/fragments/MainMenuFragment.java
+MFO_JAVA=$ROOT/java/net/kdt/pojavlaunch/fragments/MikaelForgeOptiFineFragment.java
 mkdir -p "$RES/drawable"
 # Keep the APK lightweight: Java runtimes are NOT bundled anymore.
 # The user downloads only the Java versions they need from Ajustes > Java > Runtimes.
@@ -600,7 +601,7 @@ if "forge_optifine_button" not in s:
 PY
 
 # Forge + OptiFine launcher screen.
-cat > "$JAVA" <<'EOF'
+cat > "$MFO_JAVA" <<'EOF'
 package net.kdt.pojavlaunch.fragments;
 import android.os.Bundle;
 import android.view.View;
